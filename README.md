@@ -12,7 +12,7 @@ obsidian笔记标题自动编号插件，编号后标题变了会自动同步双
 2. 在仓库里建一个文件夹 `.obsidian/plugins/heading-guard/`，把这三个文件放进去。
 3. 重启 Obsidian → 设置 → 第三方插件→ 启用 **Heading Guard**。
 
-**从插件BRAT**安装：设置 → 第三方插件 → BART 
+**从插件BRAT**安装：设置 → 第三方插件 → BRAT 
 
 ## 两个命令
 
