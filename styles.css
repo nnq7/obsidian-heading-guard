@@ -1,0 +1,136 @@
+/* 设置面板共 6 个标题等级 × 5 组子设置，靠分组标题把它们分开，否则一片糊。 */
+.heading-guard-settings .setting-item-heading {
+    margin-top: 1.6em;
+    padding-top: 0.5em;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.heading-guard-settings .setting-item-heading:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+}
+
+/* 「编号尾缀」「开启自动编号」那几行控件多，窄窗口下允许换行而不是被压扁。 */
+.heading-guard-settings .setting-item-control {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* 检测间隔的秒数标签（跟滑块同一行） */
+.heading-guard-interval-value {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    min-width: 3.2em;
+    text-align: right;
+}
+
+/* 样式预览框：只读、等宽、可横向滚动、可选中复制 */
+.heading-guard-preview {
+    margin: 0 0 1.2em;
+    padding: 0.7em 0.9em;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background-color: var(--background-secondary);
+    font-family: var(--font-monospace);
+    font-size: var(--font-ui-smaller);
+    line-height: 1.8;
+    white-space: pre;
+    overflow-x: auto;
+    user-select: text;
+}
+
+/* 面板很长，给一条看得清、拖得住的原生滚动条。
+   containerEl 自己就是滚动容器（overflow-y: auto），但主题（比如 Minimal）常把滚动条做没，
+   于是「滚得动却找不到拖的地方」。只对我们这个容器生效，不碰别的设置页。 */
+.heading-guard-settings {
+    scrollbar-width: auto;
+}
+
+.heading-guard-settings::-webkit-scrollbar {
+    display: block;
+    width: 12px;
+}
+
+.heading-guard-settings::-webkit-scrollbar-track {
+    background-color: var(--background-secondary);
+}
+
+.heading-guard-settings::-webkit-scrollbar-thumb {
+    background-color: var(--background-modifier-border-hover);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 6px;
+}
+
+.heading-guard-settings::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-faint);
+    background-clip: padding-box;
+}
+
+/* 一~六级标题：原生 <details> 折叠，默认收起（用户要求）。
+   自己画三角，别用 ::marker —— 主题常把 marker 关掉，各主题表现不一致。 */
+.heading-guard-settings details.heading-guard-level {
+    margin-top: 1.2em;
+    padding-top: 0.4em;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+.heading-guard-settings details.heading-guard-level > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.2em 0;
+    cursor: pointer;
+    user-select: none;
+    font-size: var(--font-ui-medium);
+    font-weight: var(--font-medium);
+    color: var(--text-normal);
+    list-style: none;
+}
+
+.heading-guard-settings details.heading-guard-level > summary::-webkit-details-marker {
+    display: none;
+}
+
+.heading-guard-settings details.heading-guard-level > summary::before {
+    content: '\25B8';
+    font-size: 0.9em;
+    color: var(--text-muted);
+    transition: transform 0.12s ease;
+}
+
+.heading-guard-settings details.heading-guard-level[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.heading-guard-settings details.heading-guard-level > summary:hover {
+    color: var(--text-accent);
+}
+
+/* 「恢复默认设置」：单独一行、靠右，上面一条分隔线把它跟规则区分开。
+   按钮是 Setting 里唯一一个控件且 info 区为空，所以直接让整行右对齐，位置不靠运气。 */
+.heading-guard-settings .heading-guard-restore-row {
+    justify-content: flex-end;
+    margin-top: 1.8em;
+    padding-top: 0.9em;
+    border-top: 1px solid var(--background-modifier-border);
+}
+
+/* 按钮内容是「图标 + 文字」自己拼的，两者之间的间距也得自己给 */
+.heading-guard-settings .heading-guard-restore-row button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+}
+
+/* 确认框：正文 + 按钮行（**确定在左、取消在右**，用户指定，与 Obsidian 惯例相反） */
+.heading-guard-confirm-text {
+    margin: 0 0 1.2em;
+}
+
+.heading-guard-confirm-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--size-4-2, 8px);
+}
