@@ -1,7 +1,7 @@
 {
   "id": "heading-guard",
   "name": "Heading Guard",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "minAppVersion": "1.4.0",
   "description": "Auto-number Markdown headings with per-level rules: brackets, level separators and suffixes. Keeps [[note#heading]] links pointing at the right heading when numbers change.",
   "author": "hyc",
