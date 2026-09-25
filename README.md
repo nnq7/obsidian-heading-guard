@@ -21,4 +21,6 @@ obsidian笔记标题自动编号插件，编号后标题变了会自动同步双
 | **立即编号当前笔记** | 立刻编号一次。 |
 | **重置当前笔记标题编号** | 去掉标题上的编号，只留标题文字。部分格式无法识别，需要手动处理 |
 
-
+## 使用教程
+https://www.bilibili.com/video/BV1BVau6TE4H
+[![点击图片播放](https://i2.hdslb.com/bfs/archive/75e50b090b8d2c3b907890e80f2385da54cda32a.jpg)](https://www.bilibili.com/video/BV1BVau6TE4H)
