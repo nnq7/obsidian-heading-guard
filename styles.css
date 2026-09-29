@@ -17,13 +17,31 @@
     justify-content: flex-end;
 }
 
-/* 例外：「开关 + 下拉框」的行必须**并排**（用户 2026-09-28 要求）——
-   目前是每级的「跳过编号」与全局的「子标题是否继承父标题的跳过注释」这两行。
+/* 例外：「开关 + 下拉框」或「多个下拉框」的行必须**并排**（用户 2026-09-28 / 2026-09-29 要求）——
+   目前是每级的「跳过编号」、「子标题是否继承父标题的跳过注释」、「全局编号尾缀」，
+   以及「保存标题样式」（输入框 + 四个图标按钮）这四类行。
    nowrap 禁止换行；flex-shrink: 0 让控件保持原始宽度 —— 改由左侧描述文字让位
-   （描述本来就能折行，实测在 420px 窄面板下也不溢出）。 */
+   （描述本来就能折行，实测在 420px 窄面板下也不溢出）。
+   ⚠️「全局编号尾缀」那一行是 2026-09-29 补进来的：真机量到两个下拉原来被挤成上下两行
+   （top 差 40px、控件高 72px），加了这个类之后同一行（top 相同、控件高 32px）。 */
 .heading-guard-settings .heading-guard-inline-row .setting-item-control {
     flex-wrap: nowrap;
     flex-shrink: 0;
+}
+
+/* 「保存标题样式」那一行：输入框 + 三个图标按钮。
+   它同时也带 inline-row，但那条的 flex-shrink: 0 对**文字输入框**不合适 ——
+   输入框有自己的固有宽度，窄面板下不让它收缩就会顶出去。这条规则必须排在
+   inline-row 之后（同优先级，靠源码顺序取胜）。 */
+.heading-guard-settings .heading-guard-preset-row .setting-item-control {
+    flex-wrap: nowrap;
+    flex-shrink: 1;
+}
+
+.heading-guard-settings .heading-guard-preset-row input[type='text'] {
+    flex: 1 1 auto;
+    min-width: 8em;
+    width: auto;
 }
 
 /* 检测间隔的秒数标签（跟滑块同一行） */

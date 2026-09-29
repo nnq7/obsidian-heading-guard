@@ -1,6 +1,6 @@
 'use strict';
 
-const { Plugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon, debounce } = require('obsidian');
+const { Plugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon, debounce, AbstractInputSuggest } = require('obsidian');
 
 /* ───────────────────────────── 文案 ───────────────────────────── */
 
@@ -18,7 +18,7 @@ const STRINGS = {
         scopeAll: '全部笔记',
         scopeOptIn: '仅已启用的笔记（frontmatter 写 heading-guard: on）',
         exclude: '排除文件夹',
-        excludeDesc: '一行一个文件夹路径（相对仓库根目录），这些文件夹里的笔记不自动编号。按路径前缀匹配：写 `notes` 不会影响 `notes2`。手动执行的两个命令不受此项限制',
+        excludeDesc: '一行一个文件夹路径(相对仓库根目录，例如"文件夹1/文件夹2")，这些文件夹里的笔记不受自动编号影响',
         excludeFromTemplates: '从内置「模板」插件读到的模板文件夹已填入（读不到就留空）',
         stripOld: '编号前尝试去除旧编号',
         stripOldDesc: '编号之前，尝试删除旧编号，支持的格式有限，必要时请手动删除后重新编号',
@@ -62,6 +62,24 @@ const STRINGS = {
         restoreConfirm: '是否要恢复默认设置？',
         ok: '确定',
         cancel: '取消',
+        preset: '保存标题样式',
+        presetDesc: '保存自定义样式设置，之后可以一键切换',
+        presetPlaceholder: '样式名称',
+        presetListTip: '展开全部已保存的样式',
+        presetEmpty: '还没有保存任何样式',
+        presetSave: '保存样式',
+        presetSaveTip: '用上面输入的名称保存当前样式；同名会直接覆盖',
+        presetApply: '加载选中样式',
+        presetApplyTip: '把该样式已保存的设置重新套用到下面的各级标题与全局编号尾缀',
+        presetDelete: '删除样式',
+        presetDeleteTip: '删除选中的样式',
+        presetNeedName: '请先输入样式名称',
+        presetSaved: (n) => '已保存样式「' + n + '」',
+        presetUpdated: (n) => '已更新样式「' + n + '」',
+        presetApplied: (n) => '已套用样式「' + n + '」',
+        presetDeleted: (n) => '已删除样式「' + n + '」',
+        presetMissing: (n) => '没有找到样式「' + n + '」',
+        presetDeleteConfirm: (n) => '确定删除样式「' + n + '」吗？',
     },
     'zh-TW': {
         langName: '繁體中文',
@@ -76,7 +94,7 @@ const STRINGS = {
         scopeAll: '全部筆記',
         scopeOptIn: '僅已啟用的筆記（frontmatter 寫 heading-guard: on）',
         exclude: '排除資料夾',
-        excludeDesc: '一行一個資料夾路徑（相對於倉庫根目錄），這些資料夾裡的筆記不自動編號。按路徑前綴匹配：寫 `notes` 不會影響 `notes2`。手動執行的兩個命令不受此項限制',
+        excludeDesc: '一行一個資料夾路徑(相對於倉庫根目錄，例如"資料夾1/資料夾2")，這些資料夾裡的筆記不受自動編號影響',
         excludeFromTemplates: '從內建「範本」外掛讀到的範本資料夾已填入（讀不到就留空）',
         stripOld: '編號前嘗試去除舊編號',
         stripOldDesc: '編號之前，嘗試刪除舊編號，支援的格式有限，必要時請手動刪除後重新編號',
@@ -120,6 +138,24 @@ const STRINGS = {
         restoreConfirm: '是否要恢復預設設定？',
         ok: '確定',
         cancel: '取消',
+        preset: '儲存標題樣式',
+        presetDesc: '儲存自訂樣式設定，之後可以一鍵切換',
+        presetPlaceholder: '樣式名稱',
+        presetListTip: '展開全部已儲存的樣式',
+        presetEmpty: '還沒有儲存任何樣式',
+        presetSave: '儲存樣式',
+        presetSaveTip: '以上面輸入的名稱儲存目前樣式；同名會直接覆蓋',
+        presetApply: '套用選取樣式',
+        presetApplyTip: '把該樣式已儲存的設定重新套用到下方各級標題與全域編號尾綴',
+        presetDelete: '刪除樣式',
+        presetDeleteTip: '刪除選取的樣式',
+        presetNeedName: '請先輸入樣式名稱',
+        presetSaved: (n) => '已儲存樣式「' + n + '」',
+        presetUpdated: (n) => '已更新樣式「' + n + '」',
+        presetApplied: (n) => '已套用樣式「' + n + '」',
+        presetDeleted: (n) => '已刪除樣式「' + n + '」',
+        presetMissing: (n) => '找不到樣式「' + n + '」',
+        presetDeleteConfirm: (n) => '確定要刪除樣式「' + n + '」嗎？',
     },
     'en': {
         langName: 'English',
@@ -134,7 +170,7 @@ const STRINGS = {
         scopeAll: 'All notes',
         scopeOptIn: 'Only opted-in notes (frontmatter `heading-guard: on`)',
         exclude: 'Excluded folders',
-        excludeDesc: 'One folder path per line, relative to the vault root. Notes inside them are not numbered automatically. Matched by path prefix: `notes` does not affect `notes2`. The two manual commands ignore this setting.',
+        excludeDesc: 'One folder path per line (relative to the vault root, e.g. "folder1/folder2"). Notes inside them are not affected by auto numbering.',
         excludeFromTemplates: 'Prefilled from the core Templates plugin folder (left empty if unavailable)',
         stripOld: 'Try to strip the old number before numbering',
         stripOldDesc: 'Before numbering, try to remove the old number. Only a few formats are supported; if needed, remove it by hand and number again.',
@@ -178,6 +214,24 @@ const STRINGS = {
         restoreConfirm: 'Restore default settings?',
         ok: 'OK',
         cancel: 'Cancel',
+        preset: 'Saved heading styles',
+        presetDesc: 'Save your custom style settings, then switch between them in one click',
+        presetPlaceholder: 'Style name',
+        presetListTip: 'Show all saved styles',
+        presetEmpty: 'No saved styles yet',
+        presetSave: 'Save style',
+        presetSaveTip: 'Save the current settings under the name above; an existing name is overwritten',
+        presetApply: 'Apply selected style',
+        presetApplyTip: 'Re-apply this style to the levels below and to the global heading suffix',
+        presetDelete: 'Delete style',
+        presetDeleteTip: 'Delete the selected style',
+        presetNeedName: 'Enter a style name first',
+        presetSaved: (n) => 'Saved style \u201C' + n + '\u201D',
+        presetUpdated: (n) => 'Updated style \u201C' + n + '\u201D',
+        presetApplied: (n) => 'Applied style \u201C' + n + '\u201D',
+        presetDeleted: (n) => 'Deleted style \u201C' + n + '\u201D',
+        presetMissing: (n) => 'No style named \u201C' + n + '\u201D',
+        presetDeleteConfirm: (n) => 'Delete the style \u201C' + n + '\u201D?',
     },
 };
 
@@ -271,7 +325,96 @@ const DEFAULT_SETTINGS = {
         1: defaultLevel(1), 2: defaultLevel(2), 3: defaultLevel(3),
         4: defaultLevel(4), 5: defaultLevel(5), 6: defaultLevel(6),
     },
+    // 用户自己存的「标题样式」：[{ name, levels: {1..6}, globalSuffix }]。
+    // ⚠️ 这是**用户数据**、不是设置项 —— restoreDefaults() 不重置它（否则点一下「恢复默认设置」全没了）。
+    stylePresets: [],
 };
+
+/* ───────────────────── 标题样式（预设） ───────────────────── */
+
+// 「候选表里认不出的值 → 回落默认」。loadSettings 与样式净化共用同一条口径。
+const pick = (list, value, fallback) => (list.indexOf(value) >= 0 ? value : fallback);
+
+// 把「某一级设置」净化成合法值。存盘内容一律不可信（用户手改过 / 旧版本残留 / 样式里带脏数据）。
+// 原先这段逻辑内联在 loadSettings 里；抽出来是为了让「读设置」与「读样式」不会各写一遍而跑偏。
+function sanitizeLevel(level, saved) {
+    const base = defaultLevel(level);
+    const raw = saved || {};
+    base.skip = !!raw.skip;
+    base.skipStrip = raw.skipStrip === 'strip' ? 'strip' : 'keep';
+    base.sequence = SEQUENCE_IDS.indexOf(raw.sequence) >= 0 ? raw.sequence : base.sequence;
+    base.brackets = pick(BRACKET_CHOICES, raw.brackets, base.brackets);
+    base.separator = pick(SEPARATOR_CHOICES, raw.separator, base.separator);
+    base.numbering = raw.numbering === 'restart' ? 'restart' : 'inherit';
+    base.suffix = raw.suffix
+        ? {
+            enabled: !!raw.suffix.enabled,
+            char: pick(SUFFIX_CHOICES, raw.suffix.char, base.suffix.char),
+            space: raw.suffix.space !== false,
+        }
+        : base.suffix;
+    return base;
+}
+
+function sanitizeGlobalStyle(raw) {
+    if (!raw) return Object.assign({}, DEFAULT_SETTINGS.globalSuffix);
+    return { char: pick(SUFFIX_CHOICES, raw.char, 'none'), space: raw.space !== false };
+}
+
+// 一套样式里存的就是这两样：各级标题设置 + 全局编号尾缀。
+// 其余设置（语言 / 自动编号 / 排除文件夹 / 继承跳过 …）属于「这个用户怎么用」，不跟着样式走。
+function snapshotStylePreset(settings) {
+    const levels = {};
+    for (let level = 1; level <= 6; level++) {
+        levels[level] = JSON.parse(JSON.stringify(settings.levels[level]));
+    }
+    return {
+        levels: levels,
+        globalSuffix: { char: settings.globalSuffix.char, space: !!settings.globalSuffix.space },
+    };
+}
+
+// 把样式套回 settings。
+// ⚠️ **就地改写**各级对象与 globalSuffix，绝不整个换引用 —— 设置面板里的闭包（own / global）
+//    捕获的就是这些对象本身，换引用会让它们继续指向旧值。
+function applyStylePresetToSettings(settings, preset) {
+    for (let level = 1; level <= 6; level++) {
+        const clean = sanitizeLevel(level, (preset.levels && preset.levels[level]) || {});
+        const own = settings.levels[level];
+        own.skip = clean.skip;
+        own.skipStrip = clean.skipStrip;
+        own.sequence = clean.sequence;
+        own.brackets = clean.brackets;
+        own.separator = clean.separator;
+        own.numbering = clean.numbering;
+        own.suffix.enabled = clean.suffix.enabled;
+        own.suffix.char = clean.suffix.char;
+        own.suffix.space = clean.suffix.space;
+    }
+    const global = sanitizeGlobalStyle(preset.globalSuffix);
+    settings.globalSuffix.char = global.char;
+    settings.globalSuffix.space = global.space;
+}
+
+// 从磁盘读回的样式表：只收「名字是合法非空字符串」的项；重名以后者为准（顺序保持首次出现的位置）。
+function sanitizeStylePresets(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    const at = new Map();
+    for (const item of raw) {
+        if (!item || typeof item !== 'object') continue;
+        const name = typeof item.name === 'string' ? item.name.trim() : '';
+        if (name === '') continue;
+        const levels = {};
+        for (let level = 1; level <= 6; level++) {
+            levels[level] = sanitizeLevel(level, (item.levels && item.levels[level]) || {});
+        }
+        const preset = { name: name, levels: levels, globalSuffix: sanitizeGlobalStyle(item.globalSuffix) };
+        if (at.has(name)) out[at.get(name)] = preset;
+        else { at.set(name, out.length); out.push(preset); }
+    }
+    return out;
+}
 
 /* ─────────────────────────── 编号序列 ─────────────────────────── */
 
@@ -940,26 +1083,10 @@ class HeadingGuard extends Plugin {
         // 老设置里没有 excludeFolders 这个键 = 首次启用「排除文件夹」功能（升级上来的也算）。
         // 面板首次打开时据此预填一次模板文件夹，之后永不再动（用户删掉的就是删掉了）。
         this.excludePrefillPending = !Array.isArray(raw.excludeFolders);
-        const pick = (list, value, fallback) => (list.indexOf(value) >= 0 ? value : fallback);
+        // 「某一级设置」的净化只有一份实现（模块级 sanitizeLevel），读设置与读样式预设共用同一口径。
         const levels = {};
         for (let level = 1; level <= 6; level++) {
-            const base = defaultLevel(level);
-            const saved = (raw.levels && raw.levels[level]) || {};
-            base.skip = !!saved.skip;
-            base.skipStrip = saved.skipStrip === 'strip' ? 'strip' : 'keep';
-            base.sequence = SEQUENCE_IDS.indexOf(saved.sequence) >= 0 ? saved.sequence : base.sequence;
-            base.brackets = pick(BRACKET_CHOICES, saved.brackets, base.brackets);
-            base.separator = pick(SEPARATOR_CHOICES, saved.separator, base.separator);
-            base.numbering = saved.numbering === 'restart' ? 'restart' : 'inherit';
-            // 设置里压根没有这个字段（首次安装 / 老版本升级）时保留默认值
-            base.suffix = saved.suffix
-                ? {
-                    enabled: !!saved.suffix.enabled,
-                    char: pick(SUFFIX_CHOICES, saved.suffix.char, base.suffix.char),
-                    space: saved.suffix.space !== false,
-                }
-                : base.suffix;
-            levels[level] = base;
+            levels[level] = sanitizeLevel(level, (raw.levels && raw.levels[level]) || {});
         }
         this.settings = {
             // 设置里没有 language（首装，或从没有这个字段的旧版升上来）→ 按 Obsidian 的界面语言定一次初值。
@@ -989,6 +1116,7 @@ class HeadingGuard extends Plugin {
                 }
                 : Object.assign({}, DEFAULT_SETTINGS.globalSuffix),
             levels,
+            stylePresets: sanitizeStylePresets(raw.stylePresets),
         };
     }
 
@@ -1239,6 +1367,48 @@ class HeadingGuard extends Plugin {
         }
     }
 
+    /* ── 标题样式（预设）：存的是「各级标题设置 + 全局编号尾缀」，不含语言 / 排除文件夹等 ── */
+
+    stylePresetNames() {
+        return this.settings.stylePresets.map((item) => item.name);
+    }
+
+    findStylePreset(name) {
+        const key = String(name == null ? '' : name).trim();
+        return this.settings.stylePresets.find((item) => item.name === key) || null;
+    }
+
+    // 返回 true = 覆盖了同名样式；false = 新建了一条
+    saveStylePreset(name) {
+        const preset = snapshotStylePreset(this.settings);
+        preset.name = String(name == null ? '' : name).trim();
+        const at = this.settings.stylePresets.findIndex((item) => item.name === preset.name);
+        if (at >= 0) this.settings.stylePresets[at] = preset;
+        else this.settings.stylePresets.push(preset);
+        this.saveSettings();
+        return at >= 0;
+    }
+
+    // 返回 false = 没有这个样式（调用方据此提示，不静默）
+    applyStylePreset(name) {
+        const preset = this.findStylePreset(name);
+        if (!preset) return false;
+        applyStylePresetToSettings(this.settings, preset);
+        this.saveSettings();
+        // 规则变了，当前笔记的编号也得跟着变 —— 否则要等「切笔记」才生效（签名里没有设置项）
+        this.checkActiveNote(true);
+        return true;
+    }
+
+    deleteStylePreset(name) {
+        const at = this.settings.stylePresets
+            .findIndex((item) => item.name === String(name == null ? '' : name).trim());
+        if (at < 0) return false;
+        this.settings.stylePresets.splice(at, 1);
+        this.saveSettings();
+        return true;
+    }
+
     // 链接同步要用的两个内部接口是不是都在。纯判定，没有副作用。
     canSyncLinks() {
         const mc = this.app.metadataCache;
@@ -1342,6 +1512,13 @@ function pickDropdown(dd, choices, labelFor, current, onChange) {
 // 「恢复默认设置」按钮上的图标（Lucide 名）。Obsidian 内置整套 Lucide，
 // `rotate-ccw` 就是常见的「重置 ↺」。
 const RESET_ICON = 'rotate-ccw';
+// 「保存标题样式」栏的三个图标：保存 / 重新套用 / 删除。
+// 中间那个刻意不用 rotate-ccw —— 那是「恢复默认设置」的图标，混用会看不出谁是谁。
+const PRESET_SAVE_ICON = 'save';
+const PRESET_APPLY_ICON = 'refresh-cw';
+const PRESET_DELETE_ICON = 'trash-2';
+// 「展开全部已保存样式」按钮。用 chevrons-up-down —— 与 Obsidian 自带输入建议框里的展开记号同款。
+const PRESET_LIST_ICON = 'chevrons-up-down';
 
 // 恢复默认设置的确认框。**确定在左、取消在右** —— 与 Obsidian 自带「主按钮在右」的惯例相反，
 // 这是用户指定的顺序，别按惯例改回去。
@@ -1372,6 +1549,41 @@ class ConfirmResetModal extends Modal {
 
     onClose() {
         this.contentEl.empty();
+    }
+}
+
+/* ─────────────────── 样式名输入框的建议列表 ─────────────────── */
+
+// AbstractInputSuggest 是 1.5.x 才进公开 API 的组件；老版本拿不到 → 退化成纯输入框
+//（仍可手输名称，保存 / 加载 / 删除三个按钮照常工作）。所以这里**不能**直接 extends 它。
+const HAS_INPUT_SUGGEST = typeof AbstractInputSuggest === 'function';
+const SUGGEST_BASE = HAS_INPUT_SUGGEST ? AbstractInputSuggest : function () {};
+
+// 输入框下方的候选 = 已保存的样式名；手输时按子串过滤，空串则全列。
+// 选中即回调 → 由设置面板套用该样式（用户 2026-09-29 要求：选完就同步下面的设置）。
+class StylePresetSuggest extends SUGGEST_BASE {
+    constructor(app, inputEl, getItems, onPick) {
+        super(app, inputEl);
+        this.getItems = getItems;
+        this.onPick = onPick;
+    }
+
+    getSuggestions(query) {
+        const needle = String(query == null ? '' : query).trim().toLowerCase();
+        const items = this.getItems() || [];
+        if (needle === '') return items.slice();
+        return items.filter((name) => name.toLowerCase().indexOf(needle) >= 0);
+    }
+
+    renderSuggestion(name, el) {
+        el.setText(name);
+    }
+
+    // 官方自带的文件建议框也是这个写法：先把值写回输入框、再 close()，最后才回调。
+    selectSuggestion(name) {
+        this.setValue(name);
+        this.close();
+        if (this.onPick) this.onPick(name);
     }
 }
 
@@ -1532,10 +1744,8 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 ta.onChange(() => saveExclude());
             });
 
-        settingHeading(containerEl, t('rules'));
-
-        // 「子标题是否继承父标题的跳过注释」属「编号规则」栏 → 放在本栏标题**下面**（用户 2026-09-28 要求）。
-        // 原先它渲染在标题之前，看起来像属于上面那一组设置。
+        // 「子标题是否继承父标题的跳过注释」紧跟「排除文件夹」下方（用户 2026-09-29 要求）。
+        // 原先它挂在「编号规则」栏标题下面，而那一栏标题已按要求整行删除。
         let inheritMode = null;
         const inheritRow = new Setting(containerEl)
             .setName(t('inheritSkip'))
@@ -1557,6 +1767,13 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         // 开关与下拉框必须**并排在同一行**（用户 2026-09-28 要求，与各级「跳过编号」一致）。
         inheritRow.settingEl.addClass('heading-guard-inline-row');
 
+        settingHeading(containerEl, t('preview'), 2);
+        previewEl = containerEl.createEl('pre', { cls: 'heading-guard-preview' });
+
+        // 「样式预览」下方：保存 / 加载 / 删除标题样式（用户 2026-09-29 要求）
+        this.renderPresetRow(containerEl);
+
+        // 「全局编号尾缀」移到「一级标题」正上方（用户 2026-09-29 要求）
         const global = settings.globalSuffix;
         let globalSpace = null;
         // 全局尾缀生不生效，只看它选没选「无」——没有单独的开关（用户 2026-09-24 定）。
@@ -1573,7 +1790,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 row.space.setDisabled(!editable);
             }
         };
-        new Setting(containerEl)
+        const globalRow = new Setting(containerEl)
             .setName(t('global'))
             .setDesc(t('globalDesc'))
             .addDropdown((dd) => {
@@ -1592,9 +1809,10 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                         await save();
                     });
             });
-
-        settingHeading(containerEl, t('preview'), 2);
-        previewEl = containerEl.createEl('pre', { cls: 'heading-guard-preview' });
+        // 两个下拉框必须**并排同一行**（用户 2026-09-29 要求）：尾缀字符在左、是否加空格在右。
+        // 面板默认 flex-wrap: wrap，而这一行的描述又长，实测两个下拉会被挤成上下两行
+        //（真机量到两者 top 差 40px）。与「跳过编号」/「继承跳过注释」同一套路，靠这个类改回 nowrap。
+        globalRow.settingEl.addClass('heading-guard-inline-row');
 
         for (let level = 1; level <= 6; level++) {
             const own = settings.levels[level];
@@ -1704,6 +1922,94 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         this.renderRestoreRow(containerEl); // 最后一行：恢复默认设置
     }
 
+    // 「保存标题样式」栏：一个可手输、可下拉的名称框 + 保存 / 加载 / 删除三个图标按钮。
+    // 下拉里选中某一项 = 立刻把该样式套下去（用户 2026-09-29 要求）。
+    renderPresetRow(containerEl) {
+        const plugin = this.plugin;
+        const t = (key, arg) => plugin.t(key, arg);
+        let nameInput = null;
+        let presetSuggest = null;   // 拿不到官方建议组件的老版本上一直是 null
+
+        const readName = () => (nameInput ? String(nameInput.getValue() || '').trim() : '');
+        const applyName = (name) => {
+            const value = String(name == null ? '' : name).trim();
+            if (value === '') { new Notice(t('presetNeedName')); return; }
+            if (!plugin.applyStylePreset(value)) { new Notice(t('presetMissing', value)); return; }
+            // 重绘之后输入框要还留着这个名字 —— 否则接着想「再套用一次 / 删掉它」得把名字重打一遍
+            plugin.presetNameDraft = value;
+            this.display();     // 套用后整体重绘：各级设置与全局尾缀都要跟着变
+            new Notice(t('presetApplied', value));
+        };
+        // 删除要过确认框；删成功后把输入框清掉 —— 那个名字已经不存在了，留在框里只会误导下一手操作
+        const deleteName = () => {
+            const value = readName();
+            if (value === '') { new Notice(t('presetNeedName')); return; }
+            if (plugin.stylePresetNames().indexOf(value) < 0) { new Notice(t('presetMissing', value)); return; }
+            const modal = new ConfirmResetModal(this.app, t('presetDeleteConfirm', value),
+                { ok: t('ok'), cancel: t('cancel') });
+            modal.onChoose = (answer) => {
+                if (answer !== 'ok') return;
+                plugin.deleteStylePreset(value);
+                plugin.presetNameDraft = '';
+                if (nameInput) nameInput.setValue('');
+                new Notice(t('presetDeleted', value));
+            };
+            modal.open();
+        };
+
+        const row = new Setting(containerEl)
+            .setName(t('preset'))
+            .setDesc(t('presetDesc'))
+            .addText((tc) => {
+                nameInput = tc;
+                tc.setPlaceholder(t('presetPlaceholder'));
+                // 上一次用过的名字留着（套用会重绘面板，不该被清空）；跟着输入实时记下来
+                if (plugin.presetNameDraft) tc.setValue(plugin.presetNameDraft);
+                tc.onChange((v) => { plugin.presetNameDraft = v; });
+                // 手输的同时也能选：输入框挂一个「已保存样式」的建议列表。
+                // 拿不到官方组件的老版本上就是纯输入框，不影响三个按钮。
+                if (HAS_INPUT_SUGGEST) {
+                    presetSuggest = new StylePresetSuggest(plugin.app, tc.inputEl,
+                        () => plugin.stylePresetNames(), applyName);
+                }
+            })
+            // 展开「全部已保存样式」（用户 2026-09-29 要求）：
+            // 官方建议组件一打字就进匹配态，只看得到匹配项，想看全量只能先把输入框清空。
+            // 这个按钮直接列出全部，**既不看输入框里现在是什么字、也不改它**，纯粹是「把列表摊开」。
+            .addExtraButton((b) => b
+                .setIcon(PRESET_LIST_ICON)
+                .setTooltip(t('presetListTip'))
+                .setDisabled(!HAS_INPUT_SUGGEST)   // 老版本没有建议组件 → 这个按钮没意义，置灰
+                .onClick(() => {
+                    if (!presetSuggest || typeof presetSuggest.showSuggestions !== 'function') return;
+                    const names = plugin.stylePresetNames();
+                    if (names.length === 0) { new Notice(t('presetEmpty')); return; }
+                    presetSuggest.showSuggestions(names);
+                }))
+            .addExtraButton((b) => b
+                .setIcon(PRESET_SAVE_ICON)
+                .setTooltip(t('presetSaveTip'))
+                .onClick(() => this.savePresetFromRow(readName())))
+            .addExtraButton((b) => b
+                .setIcon(PRESET_APPLY_ICON)
+                .setTooltip(t('presetApplyTip'))
+                .onClick(() => applyName(readName())))
+            .addExtraButton((b) => b
+                .setIcon(PRESET_DELETE_ICON)
+                .setTooltip(t('presetDeleteTip'))
+                .onClick(() => deleteName()));
+        // 输入框 + 三个图标按钮必须**并排在同一行**（与各级「跳过编号」同一套路）
+        row.settingEl.addClass('heading-guard-inline-row');
+        row.settingEl.addClass('heading-guard-preset-row');
+    }
+
+    savePresetFromRow(name) {
+        const value = String(name == null ? '' : name).trim();
+        if (value === '') { new Notice(this.plugin.t('presetNeedName')); return; }
+        const overwrote = this.plugin.saveStylePreset(value);
+        new Notice(this.plugin.t(overwrote ? 'presetUpdated' : 'presetSaved', value));
+    }
+
     // 最后一行、靠右的「恢复默认设置」按钮（带重置图标）。
     renderRestoreRow(containerEl) {
         const t = (key) => this.plugin.t(key);
@@ -1736,8 +2042,12 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         // 语言**不参与重置**（理由见 DEVELOPMENT 承重项 §16）：它是「这个用户的界面偏好」，
         // 重置时若突然换语言，面板会在你点完的一瞬间整个变成另一种语言。其余全部回默认值。
         const keepLanguage = plugin.settings.language;
+        // 已保存的标题样式是**用户一条条攒出来的数据**，同样不参与重置 ——
+        // 否则点一下「恢复默认设置」把样式全清了，那是数据丢失，不叫恢复默认。
+        const keepPresets = plugin.settings.stylePresets;
         plugin.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         plugin.settings.language = keepLanguage;
+        plugin.settings.stylePresets = keepPresets;
         await plugin.saveSettings();
         plugin.stopTimer();            // 默认 autoNumber=false，兜底时钟要关掉
         plugin.retryPending = false;
@@ -1785,6 +2095,12 @@ module.exports.__internals = {
     decideNumber,
     normalizeFolder,
     templateFolderPreset,
+    pick,
+    sanitizeLevel,
+    sanitizeGlobalStyle,
+    sanitizeStylePresets,
+    snapshotStylePreset,
+    applyStylePresetToSettings,
     SCOPE_CHOICES,
     renderIndex,
     toRoman,
