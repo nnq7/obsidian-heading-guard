@@ -6,6 +6,8 @@ obsidian笔记标题自动编号插件，编号后标题变了会自动同步双
 不想被碰的标题，可以紧挨着下一行写 `%%skip%%` 就行。
 如果某一级别标题都不想改变，可以打开`跳过编号`按钮
 
+推荐一个标题重命名插件，比右键标题选择重命名更加便捷：https://github.com/PlayerMiller109/obsidian-keep-headings
+
 ## 安装
 
 1. 下载 `manifest.json`、`main.js`、`styles.css`。
@@ -22,5 +24,6 @@ obsidian笔记标题自动编号插件，编号后标题变了会自动同步双
 | **重置当前笔记标题编号** | 去掉标题上的编号，只留标题文字。部分格式无法识别，需要手动处理 |
 
 ## 使用教程
+观看视频教程：
 https://www.bilibili.com/video/BV1BVau6TE4H
 [![点击图片播放](https://i2.hdslb.com/bfs/archive/75e50b090b8d2c3b907890e80f2385da54cda32a.jpg)](https://www.bilibili.com/video/BV1BVau6TE4H)
