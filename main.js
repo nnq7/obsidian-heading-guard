@@ -1,6 +1,6 @@
 'use strict';
 
-const { Plugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon, debounce, AbstractInputSuggest } = require('obsidian');
+const { Plugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon, debounce, AbstractInputSuggest, TFolder } = require('obsidian');
 
 /* ───────────────────────────── 文案 ───────────────────────────── */
 
@@ -24,7 +24,6 @@ const STRINGS = {
         stripOldDesc: '编号之前，尝试删除旧编号，支持的格式有限，必要时请手动删除后重新编号',
         inheritSkip: '子标题是否继承父标题的跳过注释',
         inheritSkipDesc: '打开后，带 %%skip%% 的标题，它的子标题也一起跳过（不编号）；后面的下拉框决定要不要删掉这些旧编号',
-        rules: '编号规则',
         preview: '样式预览',
         global: '全局编号尾缀',
         globalDesc: '为标题编号末尾添加尾缀符号，例如`1.2、`，顿号就是尾缀；选「无」表示不用全局尾缀，此时一至六级标题各自的尾缀设置说了算',
@@ -67,11 +66,8 @@ const STRINGS = {
         presetPlaceholder: '样式名称',
         presetListTip: '展开全部已保存的样式',
         presetEmpty: '还没有保存任何样式',
-        presetSave: '保存样式',
         presetSaveTip: '用上面输入的名称保存当前样式；同名会直接覆盖',
-        presetApply: '加载选中样式',
         presetApplyTip: '把该样式已保存的设置重新套用到下面的各级标题与全局编号尾缀',
-        presetDelete: '删除样式',
         presetDeleteTip: '删除选中的样式',
         presetNeedName: '请先输入样式名称',
         presetSaved: (n) => '已保存样式「' + n + '」',
@@ -80,6 +76,19 @@ const STRINGS = {
         presetDeleted: (n) => '已删除样式「' + n + '」',
         presetMissing: (n) => '没有找到样式「' + n + '」',
         presetDeleteConfirm: (n) => '确定删除样式「' + n + '」吗？',
+        confirmBefore: '手动调用命令前进行询问',
+        confirmBeforeDesc: '开启后，手动执行「立即编号当前笔记」或「重置当前笔记标题编号」时会先弹出确认窗口，逐行列出每个标题修改前后的样子，确认后才真正执行。自动编号不受此项影响',
+        diffOld: '原文',
+        diffNew: '修改后',
+        diffConfirm: '确认',
+        staleOnConfirm: '笔记在确认期间被改过，本次未执行，请重新执行命令',
+        pickFolderTitle: '选择文件夹路径',
+        pickFolderLabel: '文件夹路径',
+        pickFolderPlaceholder: '输入或选择仓库里的文件夹',
+        pickFolderNeedValue: '请先选择或输入一个文件夹',
+        excludeAdd: '添加文件夹到排除列表',
+        excludeAdded: (n) => '已添加「' + n + '」',
+        excludeAlready: (n) => '「' + n + '」已经在排除列表里',
     },
     'zh-TW': {
         langName: '繁體中文',
@@ -100,7 +109,6 @@ const STRINGS = {
         stripOldDesc: '編號之前，嘗試刪除舊編號，支援的格式有限，必要時請手動刪除後重新編號',
         inheritSkip: '子標題是否繼承父標題的跳過註解',
         inheritSkipDesc: '開啟後，帶 %%skip%% 的標題，它的子標題也一起跳過（不編號）；後面的下拉框決定要不要刪掉這些舊編號',
-        rules: '編號規則',
         preview: '樣式預覽',
         global: '全域編號尾綴',
         globalDesc: '為標題編號末尾添加尾綴符號，例如`1.2、`，頓號就是尾綴；選「無」表示不用全域尾綴，此時一至六級標題各自的尾綴設定說了算',
@@ -143,11 +151,8 @@ const STRINGS = {
         presetPlaceholder: '樣式名稱',
         presetListTip: '展開全部已儲存的樣式',
         presetEmpty: '還沒有儲存任何樣式',
-        presetSave: '儲存樣式',
         presetSaveTip: '以上面輸入的名稱儲存目前樣式；同名會直接覆蓋',
-        presetApply: '套用選取樣式',
         presetApplyTip: '把該樣式已儲存的設定重新套用到下方各級標題與全域編號尾綴',
-        presetDelete: '刪除樣式',
         presetDeleteTip: '刪除選取的樣式',
         presetNeedName: '請先輸入樣式名稱',
         presetSaved: (n) => '已儲存樣式「' + n + '」',
@@ -156,6 +161,19 @@ const STRINGS = {
         presetDeleted: (n) => '已刪除樣式「' + n + '」',
         presetMissing: (n) => '找不到樣式「' + n + '」',
         presetDeleteConfirm: (n) => '確定要刪除樣式「' + n + '」嗎？',
+        confirmBefore: '手動呼叫命令前先詢問',
+        confirmBeforeDesc: '開啟後，手動執行「立即為目前筆記編號」或「重設目前筆記標題編號」時會先彈出確認視窗，逐行列出每個標題修改前後的樣子，確認後才真正執行。自動編號不受此項影響',
+        diffOld: '原文',
+        diffNew: '修改後',
+        diffConfirm: '確認',
+        staleOnConfirm: '筆記在確認期間被改過，本次未執行，請重新執行命令',
+        pickFolderTitle: '選擇資料夾路徑',
+        pickFolderLabel: '資料夾路徑',
+        pickFolderPlaceholder: '輸入或選擇倉庫裡的資料夾',
+        pickFolderNeedValue: '請先選擇或輸入一個資料夾',
+        excludeAdd: '新增資料夾到排除清單',
+        excludeAdded: (n) => '已新增「' + n + '」',
+        excludeAlready: (n) => '「' + n + '」已經在排除清單裡',
     },
     'en': {
         langName: 'English',
@@ -176,7 +194,6 @@ const STRINGS = {
         stripOldDesc: 'Before numbering, try to remove the old number. Only a few formats are supported; if needed, remove it by hand and number again.',
         inheritSkip: 'Do sub-headings inherit the parent heading\u2019s skip marker',
         inheritSkipDesc: 'When on, the sub-headings of a %%skip%% heading are skipped too (not numbered); the dropdown decides whether their old numbers are removed',
-        rules: 'Numbering rules',
         preview: 'Style preview',
         global: 'Global heading suffix',
         globalDesc: 'Adds a suffix character to the end of the heading number, e.g. `1.2、` — the 、 itself is the suffix. Pick None to turn the global suffix off, leaving each level\u2019s own suffix in charge',
@@ -219,11 +236,8 @@ const STRINGS = {
         presetPlaceholder: 'Style name',
         presetListTip: 'Show all saved styles',
         presetEmpty: 'No saved styles yet',
-        presetSave: 'Save style',
         presetSaveTip: 'Save the current settings under the name above; an existing name is overwritten',
-        presetApply: 'Apply selected style',
         presetApplyTip: 'Re-apply this style to the levels below and to the global heading suffix',
-        presetDelete: 'Delete style',
         presetDeleteTip: 'Delete the selected style',
         presetNeedName: 'Enter a style name first',
         presetSaved: (n) => 'Saved style \u201C' + n + '\u201D',
@@ -232,6 +246,19 @@ const STRINGS = {
         presetDeleted: (n) => 'Deleted style \u201C' + n + '\u201D',
         presetMissing: (n) => 'No style named \u201C' + n + '\u201D',
         presetDeleteConfirm: (n) => 'Delete the style \u201C' + n + '\u201D?',
+        confirmBefore: 'Ask before running a manual command',
+        confirmBeforeDesc: 'When on, running Number the current note now or Reset the heading numbers first opens a confirmation window that lists every heading before and after the change; nothing is written until you confirm. Auto numbering is not affected',
+        diffOld: 'Before',
+        diffNew: 'After',
+        diffConfirm: 'Confirm',
+        staleOnConfirm: 'The note changed while you were confirming, so nothing was written. Run the command again',
+        pickFolderTitle: 'Choose a folder path',
+        pickFolderLabel: 'Folder path',
+        pickFolderPlaceholder: 'Type or pick a folder in the vault',
+        pickFolderNeedValue: 'Pick or type a folder first',
+        excludeAdd: 'Add a folder to the excluded list',
+        excludeAdded: (n) => 'Added \u201C' + n + '\u201D',
+        excludeAlready: (n) => '\u201C' + n + '\u201D is already excluded',
     },
 };
 
@@ -328,6 +355,8 @@ const DEFAULT_SETTINGS = {
     // 用户自己存的「标题样式」：[{ name, levels: {1..6}, globalSuffix }]。
     // ⚠️ 这是**用户数据**、不是设置项 —— restoreDefaults() 不重置它（否则点一下「恢复默认设置」全没了）。
     stylePresets: [],
+    // 手动执行那两个命令前先弹确认窗。**默认关**（用户 2026-10-01 决定：升级上来行为不变，要用自己去开）。
+    confirmManual: false,
 };
 
 /* ───────────────────── 标题样式（预设） ───────────────────── */
@@ -453,22 +482,6 @@ function toRoman(n) {
         }
     }
     return out;
-}
-
-// 严格识别罗马数字：只收规范写法（IV 对、IIII 与 VX 错）。
-// 反算一致才算数 —— 靠这一条把 `XML` / `MAX` / `CIVIL` 这类英文缩写挡在外面：
-// 「字符都在 MVCDIXL 里」是不够的（`XM` 也全在集合里，但 XML 不是罗马数字）。
-function parseRoman(text) {
-    if (!/^[IVXLCDM]+$/.test(text)) return null;
-    const value = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
-    let total = 0;
-    for (let i = 0; i < text.length; i++) {
-        const cur = value[text[i]];
-        const next = value[text[i + 1]];
-        total += next && cur < next ? -cur : cur;
-    }
-    if (total <= 0 || total > 3999) return null;
-    return toRoman(total) === text ? total : null;
 }
 
 const HAN_SETS = {
@@ -684,7 +697,7 @@ function decideNumber(text) {
 // 剥掉标题开头的旧编号；认不出就返回 null（调用方保持原文不动）。
 // ⚠️ `total` 是旧接口的**遗留参数**（旧实现用它做「数字 ≥100 且 > 本篇标题总数」的守卫）。
 //    新实现按「序号 ≤ 99」一刀切，不再需要它 —— 保留参数只为不动那四处调用点，别再往里加逻辑。
-function stripOldNumber(text, total) {   // eslint-disable-line no-unused-vars
+function stripOldNumber(text) {
     const hit = decideNumber(text);
     return hit === null ? null : hit.content;
 }
@@ -786,7 +799,7 @@ function previewLines(settings) {
         const parent = level === 1 ? '' : numbers[level - 1];
         // 「重新编号」不接父级前缀，本级从 1 开始（默认是继承）
         const restart = settings.levels[level].numbering === 'restart';
-        numbers[level] = (parent && !restart ? parent + rule.separator : '')
+        numbers[level] = joinNumber(parent, restart, rule.separator)
             + renderIndex(settings.levels[level].sequence, 1);
     }
     const lines = [];
@@ -795,10 +808,58 @@ function previewLines(settings) {
         const title = SAMPLE_TITLES[level - 1];
         const body = settings.levels[level].skip
             ? title
-            : rule.front + numbers[level] + rule.back + rule.tail + title;
+            : assembleTitle(rule, numbers[level], title);   // 与真编号共用同一处拼装
         lines.push('#'.repeat(level) + ' ' + body);
     }
     return lines;
+}
+
+/* ───────────────── 逐字符最小差异（确认窗口的高亮） ───────────────── */
+
+// 最长公共前缀 + 最长公共后缀（两段互不重叠），中间那段就是「变了的部分」。
+// ⚠️ 用户 2026-10-01 明确定的是**只标真正不同的字符** —— 所以这里**没有**任何
+//    「把数字后面的分隔符也并进变化窗」的扩展逻辑：`1、一级标题` → `一、一级标题`
+//    只标 `1` / `一`，中间的 `、` 两边都不上色。
+// 返回 { left, right, changed }，每侧是最多三段（不变 / 变 / 不变），空段不出现。
+function diffSegments(oldText, newText) {
+    const a = String(oldText == null ? '' : oldText);
+    const b = String(newText == null ? '' : newText);
+    let head = 0;
+    const maxHead = Math.min(a.length, b.length);
+    while (head < maxHead && a.charAt(head) === b.charAt(head)) head++;
+    let tail = 0;
+    const maxTail = Math.min(a.length - head, b.length - head);
+    while (tail < maxTail && a.charAt(a.length - 1 - tail) === b.charAt(b.length - 1 - tail)) tail++;
+    const side = (text) => {
+        const out = [];
+        const mid = text.slice(head, text.length - tail);
+        if (head > 0) out.push({ text: text.slice(0, head), changed: false });
+        if (mid !== '') out.push({ text: mid, changed: true });
+        if (tail > 0) out.push({ text: text.slice(text.length - tail), changed: false });
+        return out;
+    };
+    return { left: side(a), right: side(b), changed: a !== b };
+}
+
+// 把「这一篇的**所有**标题」变成确认窗里的预览行 {line, level, old, next}。
+// 计划里没有这条标题时（重置时本来就干净的、带 %%skip%% 被整条跳过的）＝ 原样不动，
+// 左右两列显示同样的文字 —— 用户要的是「包括当前笔记的所有标题」，不是只列会变的那些。
+// 任一标题的新鲜读取失败（缓存落后于编辑器）→ 返回 null，沿用与 planNumbering/planReset 同一条陈旧闸门。
+function previewRows(headings, getLine, plan) {
+    const nextByLine = new Map();
+    for (const item of plan || []) nextByLine.set(item.line, item.next);
+    const rows = [];
+    for (const heading of headings) {
+        const fresh = readFreshHeading(heading, getLine);
+        if (!fresh) return null;
+        rows.push({
+            line: fresh.line,
+            level: heading.level,
+            old: fresh.text,
+            next: nextByLine.has(fresh.line) ? nextByLine.get(fresh.line) : fresh.text,
+        });
+    }
+    return rows;
 }
 
 function escapeRe(text) {
@@ -838,6 +899,13 @@ function buildStrippers(settings) {
 function stripNumbering(text, strippers, level) {
     const match = strippers[level].exec(text);
     return match ? text.slice(match[0].length) : text;
+}
+
+// 「本级编号要不要接在父级后面」只有这一处实现。
+// ⚠️ 以前 planNumbering（真编号）与 previewLines（设置面板的样式预览）各写一份 —— 加「重新编号」
+//    那次必须改两遍，漏一处「样式预览」就会骗用户（预览正是给他确认规则用的）。
+function joinNumber(parent, restart, separator) {
+    return parent && !restart ? parent + separator : '';
 }
 
 function assembleTitle(rule, number, title) {
@@ -884,8 +952,6 @@ function planNumbering(headings, settings, getLine) {
     const rules = [null];
     for (let level = 1; level <= 6; level++) rules[level] = parseRule(settings, level);
     const strippers = buildStrippers(settings);
-    // 第 1 项守卫要拿它当上限（本次规划覆盖到的标题数）。
-    const totalHeadings = headings.length;
 
     const counters = [0, 0, 0, 0, 0, 0, 0];
     const numbers = ['', '', '', '', '', '', ''];
@@ -918,7 +984,7 @@ function planNumbering(headings, settings, getLine) {
             // inherit 关着时一律不删（此时下拉框在 UI 上是禁用的，存量值不许漏出来）。
             const inScope = marked ? inherit : skipFrom > 0;
             if (inScope && inheritStrip) {
-                const cleaned = stripOldNumber(heading.heading, totalHeadings);
+                const cleaned = stripOldNumber(heading.heading);
                 const next = cleaned === null ? heading.heading : cleaned;
                 if (next !== fresh.text) {
                     plan.push({ level, line: fresh.line, old: fresh.text, next, changed: true });
@@ -940,14 +1006,14 @@ function planNumbering(headings, settings, getLine) {
         // 「重新编号」= 本级从 1 开始、不带父级前缀（用户 2026-09-24 新增，默认「继承父标题编号」）。
         // 只影响这一级自己：比它深的级别仍拿 numbers[本级] 当父级，照常往下拼。
         const restart = settings.levels[level].numbering === 'restart';
-        numbers[level] = (parent && !restart ? parent + rule.separator : '')
+        numbers[level] = joinNumber(parent, restart, rule.separator)
             + renderIndex(settings.levels[level].sequence, counters[level]);
 
         if (settings.levels[level].skip) {
             // 跳过编号时，这一级还可能要「尝试删除旧编号」（用户 2026-09-24 新增）：
             // 只把编号部分删掉、重命名，不写任何新编号。用的还是同一个 stripOldNumber。
             if (settings.levels[level].skipStrip === 'strip') {
-                const cleaned = stripOldNumber(heading.heading, totalHeadings);
+                const cleaned = stripOldNumber(heading.heading);
                 const next = cleaned === null ? heading.heading : cleaned;
                 if (next !== fresh.text) {
                     plan.push({ level, line: fresh.line, old: fresh.text, next, changed: true });
@@ -962,7 +1028,7 @@ function planNumbering(headings, settings, getLine) {
         // 这一步必须**无条件**做 —— 挂在「拼装结果与原文字不同」上会漏掉这种情况：
         // 残留恰好让拼装结果等于原文，于是永远卡在那儿。
         if (settings.stripOldNumbers) {
-            const cleaned = stripOldNumber(title, totalHeadings);
+            const cleaned = stripOldNumber(title);
             if (cleaned !== null) title = cleaned;
         }
         const next = assembleTitle(rule, numbers[level], title);
@@ -974,7 +1040,6 @@ function planNumbering(headings, settings, getLine) {
 // 重置用的方案：只保留真的能去掉编号的那些行。
 function planReset(headings, getLine) {
     const plan = [];
-    const totalHeadings = headings.length;   // 第 1 项守卫的上限，同 planNumbering
     for (const heading of headings) {
         const fresh = readFreshHeading(heading, getLine);
         if (!fresh) return null;
@@ -982,7 +1047,7 @@ function planReset(headings, getLine) {
         const following = getLine(fresh.line + 1);
         if (following !== null && following.includes(SKIP_MARKER)) continue; // 标记为不动的标题同样不重置
 
-        const next = stripOldNumber(heading.heading, totalHeadings);
+        const next = stripOldNumber(heading.heading);
         if (next === null || next === fresh.text) continue;
         plan.push({ level: heading.level, line: fresh.line, old: fresh.text, next });
     }
@@ -1117,6 +1182,7 @@ class HeadingGuard extends Plugin {
                 : Object.assign({}, DEFAULT_SETTINGS.globalSuffix),
             levels,
             stylePresets: sanitizeStylePresets(raw.stylePresets),
+            confirmManual: !!raw.confirmManual,
         };
     }
 
@@ -1207,9 +1273,9 @@ class HeadingGuard extends Plugin {
     // 光标是不是正停在某个标题行上。用户在这里打字时，插件不该动手。
     // 探不到光标就当作「不在标题行」—— 宁可照旧编号，也不要因为取不到光标就整轮不干活。
     _cursorOnHeading(editor, file) {
-        if (!editor || typeof editor.getCursor !== 'function') return false;
+        if (!editor) return false;
         const cursor = editor.getCursor();
-        if (!cursor || typeof cursor.line !== 'number') return false;
+        if (!cursor) return false;
         const line = editor.getLine(cursor.line);
         if (line === null || !readHeadingLine(line)) return false;
         return this._headingsOf(file).some((h) => h.position.start.line === cursor.line);
@@ -1219,6 +1285,8 @@ class HeadingGuard extends Plugin {
     // 否则先比标题签名（等级 + 顺序 + 内容），一模一样就什么都不做。
     checkActiveNote(force) {
         if (!this.settings.autoNumber) return;
+        // 确认窗开着时不要自动编号：它会改标题行，让窗口里那几行的行号与「原文」全部失效。
+        if (this.pendingConfirm) return;
         const view = this._activeMarkdown();
         if (!view) return;
         // 作用范围：不在范围内的笔记，自动编号一律不动（用户 2026-09-25）。
@@ -1302,7 +1370,9 @@ class HeadingGuard extends Plugin {
     // manual = 由命令触发（需要给用户可见反馈）；自动触发时静默。
     async runOnce(file, editor, manual) {
         try {
-            const plan = planNumbering(this._headingsOf(file), this.settings, this._lineReader(editor));
+            const getLine = this._lineReader(editor);
+            const headings = this._headingsOf(file);
+            const plan = planNumbering(headings, this.settings, getLine);
             if (plan === null) {
                 // 缓存落后 → 这一轮什么都不写，但必须记下「还欠一次」：
                 // 签名已经记账了，不安排补跑的话，这一轮编辑就永远等不到处理
@@ -1318,19 +1388,7 @@ class HeadingGuard extends Plugin {
             }
             // 预检闸门：链接同步不可用就**一行业都不改**（用户 2026-09-24 定）
             if (!this.readyToRename(manual)) return;
-            const renames = todo.map((item) => ({ from: item.old, to: item.next }));
-            // ⚠️ 顺序不能换：本文件链接的 offset 必须在标题改动**之前**采集（见 collectSelfLinkEdits）
-            const selfEdits = this.collectSelfLinkEdits(file, renames, file.path);
-            this._write(editor, todo, selfEdits);
-            const synced = await this.syncHeadingLinks(file, renames, file.path);
-            synced.links += selfEdits.length;
-            // 自链接改动落在**本文件**里：`syncHeadingLinks` 只统计了别的文件，
-            // 本文件没被算进去就 +1（算进去过就不重复加）。
-            if (selfEdits.length > 0 && !synced.countedSelf) synced.files += 1;
-            if (manual) {
-                new Notice(this.t('done', todo.length));
-                if (synced.links > 0) new Notice(this.t('linksUpdated', synced));
-            }
+            await this._confirmOrApply({ file, editor, manual, mode: 'number', items: todo, headings, getLine, plan });
         } catch (err) {
             // 唯一一道兜底：链接同步走的是 Obsidian 内部接口，跨版本可能抛错；
             // 定时器里放任异常会每次都刷一条错误。
@@ -1340,7 +1398,9 @@ class HeadingGuard extends Plugin {
 
     async runReset(file, editor, manual) {
         try {
-            const plan = planReset(this._headingsOf(file), this._lineReader(editor));
+            const getLine = this._lineReader(editor);
+            const headings = this._headingsOf(file);
+            const plan = planReset(headings, getLine);
             if (plan === null) {
                 if (manual) new Notice(this.t('stale'));
                 return;
@@ -1351,19 +1411,77 @@ class HeadingGuard extends Plugin {
             }
             // 走的是同一条改标题的链路 → 同一个闸门（用户 2026-09-24 要求一并处理）
             if (!this.readyToRename(manual)) return;
-            const renames = plan.map((item) => ({ from: item.old, to: item.next }));
-            // 标题文字变了，指向它的链接同样要跟着走。本文件那几条并进同一个事务（理由见 _write）
-            const selfEdits = this.collectSelfLinkEdits(file, renames, file.path);
-            this._write(editor, plan, selfEdits);
-            const synced = await this.syncHeadingLinks(file, renames, file.path);
-            synced.links += selfEdits.length;
-            if (selfEdits.length > 0 && !synced.countedSelf) synced.files += 1;
-            if (manual) {
-                new Notice(this.t('resetDone', plan.length));
-                if (synced.links > 0) new Notice(this.t('linksUpdated', synced));
-            }
+            await this._confirmOrApply({ file, editor, manual, mode: 'reset', items: plan, headings, getLine, plan });
         } catch (err) {
             console.error('[heading-guard] 重置编号失败：', err);
+        }
+    }
+
+    /* ── 执行前的确认窗（用户 2026-10-01 要求）── */
+
+    // manual 且开关打开 → 先弹两列对照窗；否则直接执行（与 1.5.1 行为完全一致）。
+    async _confirmOrApply(ctx) {
+        const { file, editor, manual, mode, items, headings, getLine, plan } = ctx;
+        if (!manual || !this.settings.confirmManual) {
+            return this._applyItems(file, editor, items, manual, mode);
+        }
+        const rows = previewRows(headings, getLine, plan);
+        if (rows === null) { new Notice(this.t('stale')); return; }
+        this.pendingConfirm = true;
+        const modal = new DiffConfirmModal(this.app, {
+            title: this.t(mode === 'number' ? 'cmdNow' : 'cmdReset'),
+            rows,
+            labels: {
+                old: this.t('diffOld'), next: this.t('diffNew'),
+                cancel: this.t('cancel'), confirm: this.t('diffConfirm'),
+            },
+            onConfirm: (finalRows) => this._applyEdited(file, editor, finalRows, mode),
+            onClose: () => { this.pendingConfirm = false; },
+        });
+        modal.open();
+    }
+
+    // 确认之后：以「窗口里那几行当下的文字」为准重算改动，再走与直接执行**同一条**写回链路。
+    // ⚠️ 右列是可编辑的 —— 所以这里写进去的可能是用户手改过的标题文字，不只是编号。
+    async _applyEdited(file, editor, rows, mode) {
+        try {
+            const items = rows
+                .map((r) => ({ line: r.line, level: r.level, old: r.old, next: r.text, changed: r.text !== r.old }))
+                .filter((r) => r.changed);
+            if (items.length === 0) {
+                new Notice(this.t(mode === 'number' ? 'upToDate' : 'noNumber'));
+                return;
+            }
+            // 陈旧保护：确认期间文档被改过（自动编号、别的插件、外部同步）→ 一行都不写。
+            // 宁可让用户重来一次，也不能按过期行号写进错误的位置。
+            const getLine = this._lineReader(editor);
+            for (const item of items) {
+                const now = readHeadingLine(getLine(item.line) || '');
+                if (!now || now.text !== item.old) {
+                    new Notice(this.t('staleOnConfirm'));
+                    return;
+                }
+            }
+            await this._applyItems(file, editor, items, true, mode);
+        } catch (err) {
+            console.error('[heading-guard] 确认后写入失败：', err);
+        }
+    }
+
+    // 「直接执行」与「确认后执行」共用的尾段：本文件链接改动并入同一个事务，再同步别文件。
+    async _applyItems(file, editor, items, manual, mode) {
+        const renames = items.map((item) => ({ from: item.old, to: item.next }));
+        // ⚠️ 顺序不能换：本文件链接的 offset 必须在标题改动**之前**采集（见 collectSelfLinkEdits）
+        const selfEdits = this.collectSelfLinkEdits(file, renames, file.path);
+        this._write(editor, items, selfEdits);
+        const synced = await this.syncHeadingLinks(file, renames, file.path);
+        synced.links += selfEdits.length;
+        // 自链接改动落在**本文件**里：`syncHeadingLinks` 只统计了别的文件，
+        // 本文件没被算进去就 +1（算进去过就不重复加）。
+        if (selfEdits.length > 0 && !synced.countedSelf) synced.files += 1;
+        if (manual) {
+            new Notice(this.t(mode === 'number' ? 'done' : 'resetDone', items.length));
+            if (synced.links > 0) new Notice(this.t('linksUpdated', synced));
         }
     }
 
@@ -1552,16 +1670,120 @@ class ConfirmResetModal extends Modal {
     }
 }
 
+/* ─────────── 手动命令前的两列对照确认窗（用户 2026-10-01 要求）─────────── */
+
+// 差异段画成 <span>：变了的加高亮类，没变的不加。整段重画（失焦重算要用）。
+function paintDiffSegments(el, segments, changedCls) {
+    el.empty();
+    for (const seg of segments) {
+        if (seg.text === '') continue;
+        if (seg.changed) el.createEl('span', { cls: changedCls, text: seg.text });
+        else el.createEl('span', { text: seg.text });
+    }
+}
+
+// 标题只有一行：换行 / 制表符一律折成空格（粘贴多行文本时用得上）。
+function flattenCellText(raw) {
+    return String(raw == null ? '' : raw).replace(/[\r\n\t]+/g, ' ');
+}
+
+class DiffConfirmModal extends Modal {
+    constructor(app, opts) {
+        super(app);
+        this.opts = opts;
+        this.answer = null;      // 'confirm' | 'cancel'，离线测试拿它断言
+    }
+
+    onOpen() {
+        const { title, rows, labels } = this.opts;
+        this.modalEl.addClass('heading-guard-diff-modal');
+        this.titleEl.setText(title);
+
+        const head = this.contentEl.createEl('div', { cls: 'heading-guard-diff-head' });
+        head.createEl('div', { cls: 'heading-guard-diff-col', text: labels.old });
+        head.createEl('div', { cls: 'heading-guard-diff-col', text: labels.next });
+
+        // ⚠️ 两列**共用同一个滚动容器** → 滚动天然同步，也不可能错行，不需要任何同步代码。
+        //    （用户要求「两列共用同一个滚动条并支持同步滚动」，一个滚动容器就是最直白的实现。）
+        const scroller = this.contentEl.createEl('div', { cls: 'heading-guard-diff-scroll' });
+        for (const row of rows) {
+            row.text = row.next;
+            const line = scroller.createEl('div', { cls: 'heading-guard-diff-row' });
+
+            // 左列：纯文本、只读（不是输入框，点进去也改不了），但可以选中复制。
+            const left = line.createEl('div', { cls: 'heading-guard-diff-cell heading-guard-diff-old' });
+            paintDiffSegments(left, diffSegments(row.old, row.next).left, 'heading-guard-diff-del');
+
+            // 右列：可编辑文本框。内容与高亮都自己画，才能只给「新增的那几个字」上底色。
+            const right = line.createEl('div', {
+                cls: 'heading-guard-diff-cell heading-guard-diff-new',
+                attr: { contenteditable: 'true', spellcheck: 'false' },
+            });
+            paintDiffSegments(right, diffSegments(row.old, row.next).right, 'heading-guard-diff-ins');
+            row.el = right;
+
+            // 只粘纯文本；回车吞掉 —— 标题本来就只有一行
+            right.addEventListener('paste', (ev) => {
+                ev.preventDefault();
+                const cb = ev.clipboardData;
+                const text = cb && cb.getData ? flattenCellText(cb.getData('text/plain')) : '';
+                if (!text) return;
+                const doc = right.ownerDocument;
+                if (doc && typeof doc.execCommand === 'function') doc.execCommand('insertText', false, text);
+            });
+            right.addEventListener('keydown', (ev) => {
+                if (ev.key === 'Enter') ev.preventDefault();
+            });
+            // 失焦重算（用户要求）：拿**左列原文**和「这行现在被我改成什么样」重新比对。
+            // ⚠️ **两列必须一起重画** —— 只重画右列会让左列留着上一次的红底，跟右列对不上：
+            //    用户 2026-10-01 实测报的就是这个（在右列删掉「编号」，左列的「编号」没变红）。
+            //    右列整条删空时，左列整条标红。
+            right.addEventListener('blur', () => {
+                const text = flattenCellText(right.textContent);
+                row.text = text;
+                const diff = diffSegments(row.old, text);
+                paintDiffSegments(left, diff.left, 'heading-guard-diff-del');
+                paintDiffSegments(right, diff.right, 'heading-guard-diff-ins');
+            });
+        }
+
+        // 底部：左「取消」/ 右「确认」（按用户草图；与插件另一个确认框的顺序相反，
+        // 那个是「确定在左、取消在右」，也是用户当时指定的，两个都别改回去）。
+        const bar = this.contentEl.createEl('div', { cls: 'heading-guard-diff-buttons' });
+        bar.createEl('button', { text: labels.cancel })
+            .addEventListener('click', () => this.finish(false));
+        bar.createEl('button', { text: labels.confirm, cls: 'mod-cta' })
+            .addEventListener('click', () => this.finish(true));
+    }
+
+    finish(confirm) {
+        this.answer = confirm ? 'confirm' : 'cancel';
+        const rows = this.opts.rows || [];
+        // 以**当下**的 DOM 为准 —— 用户可能没让某一行失焦就直接点了确认
+        for (const row of rows) if (row.el) row.text = flattenCellText(row.el.textContent);
+        this.close();
+        // 先关窗再写：改标题的过程中窗口不该还挂在屏幕上
+        if (confirm && this.opts.onConfirm) this.opts.onConfirm(rows);
+    }
+
+    onClose() {
+        this.contentEl.empty();
+        if (this.opts.onClose) this.opts.onClose();
+    }
+}
+
 /* ─────────────────── 样式名输入框的建议列表 ─────────────────── */
 
 // AbstractInputSuggest 是 1.5.x 才进公开 API 的组件；老版本拿不到 → 退化成纯输入框
 //（仍可手输名称，保存 / 加载 / 删除三个按钮照常工作）。所以这里**不能**直接 extends 它。
 const HAS_INPUT_SUGGEST = typeof AbstractInputSuggest === 'function';
+// 建议列表最多显示多少条（与 mpv-linker 一致）。⚠️ 只在**过滤之后**生效。
+const SUGGEST_LIMIT = 50;
 const SUGGEST_BASE = HAS_INPUT_SUGGEST ? AbstractInputSuggest : function () {};
 
-// 输入框下方的候选 = 已保存的样式名；手输时按子串过滤，空串则全列。
-// 选中即回调 → 由设置面板套用该样式（用户 2026-09-29 要求：选完就同步下面的设置）。
-class StylePresetSuggest extends SUGGEST_BASE {
+// 输入框下方的候选 = 调用方给的那串字符串（已保存的样式名 / 仓库里的文件夹路径）；
+// 手输时按大小写不敏感的子串过滤，空串则全列 —— 与 mpv-linker「截图保存目录位置」同一套口径。
+class InputListSuggest extends SUGGEST_BASE {
     constructor(app, inputEl, getItems, onPick) {
         super(app, inputEl);
         this.getItems = getItems;
@@ -1571,8 +1793,13 @@ class StylePresetSuggest extends SUGGEST_BASE {
     getSuggestions(query) {
         const needle = String(query == null ? '' : query).trim().toLowerCase();
         const items = this.getItems() || [];
-        if (needle === '') return items.slice();
-        return items.filter((name) => name.toLowerCase().indexOf(needle) >= 0);
+        const hit = needle === '' ? items.slice()
+            : items.filter((name) => name.toLowerCase().indexOf(needle) >= 0);
+        // ⚠️ 截断必须发生在**过滤之后**。候选表可能很长（用户仓库 83 个文件夹），
+        //    先截再筛会让排在 50 名以后的文件夹**永远搜不到** ——
+        //    2026-10-02 用户实测：`Z-附件` 在第 75 位，查 `附件` / `Z-` 都是 0 条。
+        //    mpv-linker 的「截图保存目录位置」也是「先过滤再截断」，这里与它对齐。
+        return hit.slice(0, SUGGEST_LIMIT);
     }
 
     renderSuggestion(name, el) {
@@ -1584,6 +1811,64 @@ class StylePresetSuggest extends SUGGEST_BASE {
         this.setValue(name);
         this.close();
         if (this.onPick) this.onPick(name);
+    }
+}
+
+/* ───────── 从仓库里挑一个文件夹（用户 2026-10-02 要求）───────── */
+
+// 候选 = 仓库里**所有**文件夹的路径（排序，不截断）。根 '/' 不算可选文件夹。
+// ⚠️ 这里刻意**不截断** —— 截断由建议组件在「按查询过滤之后」做；先截再筛会让排后面的文件夹搜不到。
+function vaultFolderPaths(app) {
+    return app.vault.getAllLoadedFiles()
+        .filter((f) => f instanceof TFolder && f.path !== '/')
+        .map((f) => f.path)
+        .sort();
+}
+
+// 「选择文件夹路径」窗：一个输入框（可手打、可下拉选）+ 底部取消 / 确定。
+// 选中候选只**回填输入框**，不直接生效 —— 要点「确定」才写回去，与用户要求一致。
+class FolderPickerModal extends Modal {
+    constructor(app, opts) {
+        super(app);
+        this.opts = opts;      // { title, label, placeholder, labels: {cancel, ok}, onConfirm(path) }
+        this.answer = null;    // 'confirm' | 'cancel'，离线测试拿它断言
+    }
+
+    onOpen() {
+        const { title, label, placeholder, labels } = this.opts;
+        this.modalEl.addClass('heading-guard-folder-modal');
+        this.titleEl.setText(title);
+
+        new Setting(this.contentEl)
+            .setName(label)
+            .addText((tc) => {
+                this.input = tc;
+                tc.setPlaceholder(placeholder);
+                // 拿不到官方建议组件的老版本上就是纯输入框 —— 手打路径照样能用
+                if (HAS_INPUT_SUGGEST) {
+                    this.suggest = new InputListSuggest(this.app, tc.inputEl,
+                        () => vaultFolderPaths(this.app), (path) => tc.setValue(path));
+                }
+            });
+
+        // 用 Obsidian 自己的按钮容器（原生外观：取消左、确定右）
+        const bar = this.contentEl.createEl('div', { cls: 'modal-button-container' });
+        bar.createEl('button', { text: labels.cancel })
+            .addEventListener('click', () => this.finish(false));
+        bar.createEl('button', { text: labels.ok, cls: 'mod-cta' })
+            .addEventListener('click', () => this.finish(true));
+    }
+
+    finish(confirm) {
+        this.answer = confirm ? 'confirm' : 'cancel';
+        const value = this.input ? String(this.input.getValue() || '') : '';
+        this.close();
+        if (confirm && this.opts.onConfirm) this.opts.onConfirm(value);
+    }
+
+    onClose() {
+        this.contentEl.empty();
+        if (this.opts.onClose) this.opts.onClose();
     }
 }
 
@@ -1727,7 +2012,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 new Notice(t('excludeFromTemplates'));
             }
         }
-        new Setting(containerEl)
+        const excludeRow = new Setting(containerEl)
             .setName(t('exclude'))
             .setDesc(t('excludeDesc'))
             .addTextArea((ta) => {
@@ -1742,7 +2027,25 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                     await plugin.saveSettings();
                 }, 500);
                 ta.onChange(() => saveExclude());
-            });
+            })
+            // 「+」：从仓库里挑一个文件夹追加进排除列表（用户 2026-10-02 要求）
+            .addExtraButton((b) => b
+                .setIcon('plus')
+                .setTooltip(t('excludeAdd'))
+                .onClick(() => this.pickFolderToExclude()));
+        // 「多行文本框 + 加号」必须**并排同一行**：面板默认 flex-wrap: wrap，真机量到加号会被挤到
+        // 下一行（t 差 90px）。与「跳过编号」「全局编号尾缀」同一套路，靠这个类改回 nowrap。
+        excludeRow.settingEl.addClass('heading-guard-inline-row');
+
+        // 「手动调用命令前进行询问」（用户 2026-10-01 要求）：就放在「排除文件夹」下面。
+        // 它只管**手动**那两个命令；自动编号一律不受影响（否则每次定时触发都弹窗）。
+        new Setting(containerEl)
+            .setName(t('confirmBefore'))
+            .setDesc(t('confirmBeforeDesc'))
+            .addToggle((tg) => tg.setValue(settings.confirmManual).onChange(async (value) => {
+                settings.confirmManual = value;
+                await save();
+            }));
 
         // 「子标题是否继承父标题的跳过注释」紧跟「排除文件夹」下方（用户 2026-09-29 要求）。
         // 原先它挂在「编号规则」栏标题下面，而那一栏标题已按要求整行删除。
@@ -1922,6 +2225,33 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         this.renderRestoreRow(containerEl); // 最后一行：恢复默认设置
     }
 
+    // 「排除文件夹」右侧 + 的处理器：选中的路径**追加**到列表末尾（每行一条），
+    // 空值不接受；已经在列表里的直接提示、不重复添加。
+    pickFolderToExclude() {
+        const plugin = this.plugin;
+        const t = (key, arg) => plugin.t(key, arg);
+        const modal = new FolderPickerModal(this.app, {
+            title: t('pickFolderTitle'),
+            label: t('pickFolderLabel'),
+            placeholder: t('pickFolderPlaceholder'),
+            labels: { cancel: t('cancel'), ok: t('ok') },
+            onConfirm: (value) => {
+                const path = normalizeFolder(value);
+                if (path === '') { new Notice(t('pickFolderNeedValue')); return; }
+                const shown = path.replace(/\/$/, '');   // 列表里显示的是不带尾斜杠的写法
+                if (plugin.settings.excludeFolders.indexOf(path) >= 0) {
+                    new Notice(t('excludeAlready', shown));
+                    return;
+                }
+                plugin.settings.excludeFolders.push(path);
+                plugin.saveSettings();
+                this.display();      // 重绘 → 输入框立刻多出这一行
+                new Notice(t('excludeAdded', shown));
+            },
+        });
+        modal.open();
+    }
+
     // 「保存标题样式」栏：一个可手输、可下拉的名称框 + 保存 / 加载 / 删除三个图标按钮。
     // 下拉里选中某一项 = 立刻把该样式套下去（用户 2026-09-29 要求）。
     renderPresetRow(containerEl) {
@@ -1969,7 +2299,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 // 手输的同时也能选：输入框挂一个「已保存样式」的建议列表。
                 // 拿不到官方组件的老版本上就是纯输入框，不影响三个按钮。
                 if (HAS_INPUT_SUGGEST) {
-                    presetSuggest = new StylePresetSuggest(plugin.app, tc.inputEl,
+                    presetSuggest = new InputListSuggest(plugin.app, tc.inputEl,
                         () => plugin.stylePresetNames(), applyName);
                 }
             })
@@ -2021,7 +2351,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
             // 取决于组件内部实现，靠不住。这样渲染结果是个定值：
             // <button><svg class="svg-icon lucide-rotate-ccw"/><span>恢复默认设置</span></button>
             b.buttonEl.empty();
-            if (typeof setIcon === 'function') setIcon(b.buttonEl, RESET_ICON);
+            setIcon(b.buttonEl, RESET_ICON);
             b.buttonEl.createEl('span', { text: t('restoreDefaults') });
         });
     }
@@ -2059,21 +2389,13 @@ class HeadingGuardSettingTab extends PluginSettingTab {
 
 module.exports = HeadingGuard;
 module.exports.__internals = {
-    STRINGS,
     DEFAULT_SETTINGS,
-    DEFAULT_SCAN_INTERVAL,
-    MIN_SCAN_INTERVAL,
-    MAX_SCAN_INTERVAL,
     NOTE_ENTER_DELAY_MS,
     EDIT_DEBOUNCE_MS,
-    SKIP_MARKER,
     SUFFIX_CHOICES,
     SEPARATOR_CHOICES,
     BRACKET_CHOICES,
     SAMPLE_TITLES,
-    SEQUENCES,
-    SEQUENCE_IDS,
-    SEQUENCE_SAMPLES,
     lookup,
     detectObsidianLanguage,
     mapObsidianLanguage,
@@ -2083,6 +2405,9 @@ module.exports.__internals = {
     linkKeyOld,
     parseRule,
     previewLines,
+    diffSegments,
+    previewRows,
+    DiffConfirmModal,
     buildStrippers,
     stripNumbering,
     assembleTitle,
@@ -2094,6 +2419,10 @@ module.exports.__internals = {
     stripOldNumber,
     decideNumber,
     normalizeFolder,
+    vaultFolderPaths,
+    FolderPickerModal,
+    InputListSuggest,
+    SUGGEST_LIMIT,
     templateFolderPreset,
     pick,
     sanitizeLevel,
@@ -2101,11 +2430,9 @@ module.exports.__internals = {
     sanitizeStylePresets,
     snapshotStylePreset,
     applyStylePresetToSettings,
-    SCOPE_CHOICES,
     renderIndex,
     toRoman,
     toHan,
-    HAN_SETS,
     buildChange,
     escapeUrl,
     keyArray,
