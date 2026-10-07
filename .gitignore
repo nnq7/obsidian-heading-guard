@@ -11,6 +11,9 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+# release 专用的去注释产物（由 _github/build-dist.cjs 构建，不进仓库）
+dist/
+
 # 日志与临时产物
 *.log
 *.tmp

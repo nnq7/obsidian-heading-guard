@@ -708,6 +708,17 @@ function normHeading(text) {
     return text == null ? '' : String(text).trim().normalize('NFC');
 }
 
+// 陈旧闸门专用归一化：`normHeading` + **折叠内部连续空白**。
+// 为什么必须折叠：Obsidian 建 metadataCache 时会把标题内部的连续空白折成单个空格
+//（2026-10-08 真机实测：磁盘上 `### 23、Commander  命令`（字符码 32,32）在缓存里存成
+// `23、Commander 命令`（32）），而编辑器 `getLine()` 拿到的是原文。两边只差空白**不是**
+//「缓存落后」—— 不折叠就会把整篇笔记永久判成 stale（用户实测报的 bug：整轮放弃 + 弹提示）。
+// ⚠️ 只用于**比对**：写入一律以 `fresh.text`（编辑器原文）为基准，否则会把用户的连续空白压掉。
+// ⚠️ 不能并进 `normHeading`：那个还服务 canvas renameSubpath（见它上方注释）。
+function normForGate(text) {
+    return text == null ? '' : String(text).replace(/\s+/g, ' ').trim().normalize('NFC');
+}
+
 /* ───── 链接子路径归一化：**逐字复刻官方**（2026-09-26 对齐） ─────
  * 出处：官方 `obsidian.asar` 里 `hI.prototype.getChanges`（「重命名标题」模态框）：
  *     var AT=/[!"#$%&()*+,.:;<=>?@^`{|}~\/\[\]\\\r\n]/g,
@@ -925,7 +936,7 @@ function readFreshHeading(heading, getLine) {
     const line = heading.position.start.line;
     const text = getLine(line);
     const read = text === null ? null : readHeadingLine(text);
-    if (!read || read.level !== heading.level || normHeading(read.text) !== normHeading(heading.heading)) {
+    if (!read || read.level !== heading.level || normForGate(read.text) !== normForGate(heading.heading)) {
         return null;
     }
     return { line, text: read.text };
@@ -984,8 +995,8 @@ function planNumbering(headings, settings, getLine) {
             // inherit 关着时一律不删（此时下拉框在 UI 上是禁用的，存量值不许漏出来）。
             const inScope = marked ? inherit : skipFrom > 0;
             if (inScope && inheritStrip) {
-                const cleaned = stripOldNumber(heading.heading);
-                const next = cleaned === null ? heading.heading : cleaned;
+                const cleaned = stripOldNumber(fresh.text);
+                const next = cleaned === null ? fresh.text : cleaned;
                 if (next !== fresh.text) {
                     plan.push({ level, line: fresh.line, old: fresh.text, next, changed: true });
                 }
@@ -1013,8 +1024,8 @@ function planNumbering(headings, settings, getLine) {
             // 跳过编号时，这一级还可能要「尝试删除旧编号」（用户 2026-09-24 新增）：
             // 只把编号部分删掉、重命名，不写任何新编号。用的还是同一个 stripOldNumber。
             if (settings.levels[level].skipStrip === 'strip') {
-                const cleaned = stripOldNumber(heading.heading);
-                const next = cleaned === null ? heading.heading : cleaned;
+                const cleaned = stripOldNumber(fresh.text);
+                const next = cleaned === null ? fresh.text : cleaned;
                 if (next !== fresh.text) {
                     plan.push({ level, line: fresh.line, old: fresh.text, next, changed: true });
                 }
@@ -1022,7 +1033,7 @@ function planNumbering(headings, settings, getLine) {
             continue; // 号已经占上了
         }
 
-        let title = stripNumbering(heading.heading, strippers, level);
+        let title = stripNumbering(fresh.text, strippers, level);
         // 「编号前尝试去除旧编号」：剥掉当前编号后，标题文字里可能还压着更早的旧编号残留
         // （`II 1、 设置界面` 剥掉 `II ` 之后只剩 `1、 设置界面`）。
         // 这一步必须**无条件**做 —— 挂在「拼装结果与原文字不同」上会漏掉这种情况：
@@ -1047,7 +1058,7 @@ function planReset(headings, getLine) {
         const following = getLine(fresh.line + 1);
         if (following !== null && following.includes(SKIP_MARKER)) continue; // 标记为不动的标题同样不重置
 
-        const next = stripOldNumber(heading.heading);
+        const next = stripOldNumber(fresh.text);
         if (next === null || next === fresh.text) continue;
         plan.push({ level: heading.level, line: fresh.line, old: fresh.text, next });
     }
@@ -2400,6 +2411,7 @@ module.exports.__internals = {
     detectObsidianLanguage,
     mapObsidianLanguage,
     normHeading,
+    normForGate,
     linkNormAt,
     linkNormPt,
     linkKeyOld,
