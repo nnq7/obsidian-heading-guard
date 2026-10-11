@@ -208,6 +208,30 @@
     min-width: 0;
     text-align: center;
 }
+/* 顶部汇总行（票 10）：弱化色，别抢标题的视觉 */
+.heading-guard-diff-summary {
+    padding-bottom: 0.4em;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-muted);
+}
+
+/* 行首级别标签 `H1`…`H6` / `Skip`（票 10）：不可选中、不换行，弱于正文 */
+.heading-guard-diff-level {
+    display: inline-block;
+    /* ⚠️ 必须是**定宽**：`Skip` 比 `H2` 宽，宽度自适应的话，带 Skip 那一行的标题会被挤到右边，
+       于是上下几行的标题文字左边缘参差不齐（用户 2026-10-10 截图反馈）。
+       定了宽，标签列自己对齐，标题自然就对齐了。 */
+    min-width: 2.5em;
+    margin-right: 0.4em;
+    font-size: var(--font-ui-smaller);
+    color: var(--text-faint);
+    text-align: left;
+    user-select: none;
+}
+
+.heading-guard-diff-level.is-skip {
+    color: var(--text-warning, var(--text-faint));
+}
 
 /* 唯一的滚动容器：所有行都在里面 → 两列**天然同步滚动**，也不可能错行，
    不需要任何 onscroll 同步代码（用户要求「共用同一个滚动条并支持同步滚动」）。 */
@@ -276,4 +300,74 @@
     justify-content: center;
     gap: 12px;
     padding-top: 0.9em;
+}
+
+/* 票 12：「恢复默认设置」下方那段说明（用户 2026-10-11 要求）。
+   ⚠️ 它**不是设置项** —— 没有 .setting-item 的背景与方框，只是一段灰色小字说明。 */
+.heading-guard-settings .heading-guard-fm-help {
+    margin: var(--size-4-2) var(--size-4-2) var(--size-4-6) var(--size-4-2);
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    line-height: 1.6;
+}
+
+.heading-guard-settings .heading-guard-fm-help .heading-guard-fm-help-intro {
+    margin-bottom: 2px;
+}
+
+.heading-guard-settings .heading-guard-fm-help .heading-guard-fm-help-line code {
+    margin-right: var(--size-4-1);
+    color: var(--text-normal);
+}
+
+/* 票 13：说明块里的那个两行示例（等宽、带一点底色，但整块仍然**不是设置项卡片**） */
+.heading-guard-settings .heading-guard-fm-help .heading-guard-fm-help-sample {
+    margin: var(--size-4-1) 0;
+    padding: var(--size-4-1) var(--size-4-2);
+    background: var(--background-secondary);
+    border-radius: var(--radius-s);
+    font-size: var(--font-ui-smaller);
+    line-height: 1.5;
+    white-space: pre;
+}
+
+/* 第二组的说明行跟第一组之间留一点空（两组都在同一个 .heading-guard-fm-help 里） */
+.heading-guard-settings .heading-guard-fm-help .heading-guard-fm-help-intro + .heading-guard-fm-help-sample {
+    margin-top: 2px;
+}
+
+/* 票 15：两段说明的可折叠行（用户 2026-10-11）。
+   观感抄自各级标题分组（details.heading-guard-level），但**用独立类** ——
+   ⚠️ 别合并到 .heading-guard-level：测试里 `groups` 是按 tag 过滤的，混进去会污染那 6 个分级的断言。 */
+.heading-guard-settings details.heading-guard-help-fold {
+    margin: var(--size-4-2) var(--size-4-2) var(--size-4-4) var(--size-4-2);
+}
+
+.heading-guard-settings details.heading-guard-help-fold > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 0.2em 0;
+    cursor: pointer;
+    user-select: none;
+    /* 2026-10-11 用户要求：和「样式预览」那行**一样大**。
+       它在面板里是个 <h4>（真机量到 19.125px）⇒ 这里直接用 Obsidian 给 h4 的那个变量，
+       不写死像素（换主题/改字号时能跟着走）；字重与颜色对齐面板里其它标题（见 .heading-guard-level 的 summary）。 */
+    font-size: var(--h4-size, 1.275em);
+    font-weight: var(--font-medium);
+    color: var(--text-normal);
+    list-style: none;
+}
+
+.heading-guard-settings details.heading-guard-help-fold > summary::-webkit-details-marker {
+    display: none;
+}
+
+.heading-guard-settings details.heading-guard-help-fold > summary::before {
+    content: '▸';
+    transition: transform 0.1s ease;
+}
+
+.heading-guard-settings details.heading-guard-help-fold[open] > summary::before {
+    transform: rotate(90deg);
 }
