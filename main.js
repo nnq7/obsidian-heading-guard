@@ -44,10 +44,10 @@ const STRINGS = {
         stripOld: '编号前尝试去除旧编号',
         stripOldDesc: '编号之前，尝试删除旧编号，支持的格式有限，必要时请手动删除后重新编号',
         missingLevel: '父级别缺失或级别不连续时编号方式',
-        missingLevelDesc: '父级标题缺失或被注释%%skip%%跳过时，子标题如何编号',
+        missingLevelDesc: '父级标题缺失或被注释%%skip%%跳过时，子标题如何编号（只要笔记中存在一个正常编号的父标题就不算缺失或跳过）',
         missingLevelStrict: '严格按照标题样式',
         missingLevelInherit: '继承父标题样式',
-        previewInheritTitle: '父级缺失或注释跳过，子标题递进继承父级样式',
+        previewHypoLine: '# (假设一级标题缺失或skip)',
         preview: '样式预览',
         none: '无',
         bracketAscii: '()-英文括号',
@@ -55,8 +55,8 @@ const STRINGS = {
         withSpace: '尾缀后加空格',
         noSpace: '尾缀后不加空格',
         level: ['', '一级标题', '二级标题', '三级标题', '四级标题', '五级标题', '六级标题'],
-        skip: '跳过编号',
-        skipDesc: '该层级标题不编号，但子标题仍正常按规则编号',
+        skip: '本级不编号',
+        skipDesc: '该层级标题不编号，但保留该层级结构，子标题仍正常按规则编号',
         seqBrackets: '编号序列/前后括符',
         seqBracketsDesc: '本级编号怎么排：接着父级往下排（阶梯式），还是从 1 重新开始',
         numberInherit: '阶梯式编号',
@@ -141,10 +141,10 @@ const STRINGS = {
         stripOld: '編號前嘗試去除舊編號',
         stripOldDesc: '編號之前，嘗試刪除舊編號，支援的格式有限，必要時請手動刪除後重新編號',
         missingLevel: '父層級缺失或層級不連續時編號方式',
-        missingLevelDesc: '父層級標題缺失或被註解%%skip%%跳過時，子標題如何編號',
+        missingLevelDesc: '父級標題缺失或被註解%%skip%%跳過時，子標題如何編號（只要筆記中存在一個正常編號的父標題就不算缺失或跳過）',
         missingLevelStrict: '嚴格依照標題樣式',
         missingLevelInherit: '繼承父標題樣式',
-        previewInheritTitle: '父層級缺失或註解跳過，子標題遞進繼承父層級樣式',
+        previewHypoLine: '# (假設一級標題缺失或skip)',
         preview: '樣式預覽',
         none: '無',
         bracketAscii: '()-英文括號',
@@ -152,8 +152,8 @@ const STRINGS = {
         withSpace: '尾綴後加空格',
         noSpace: '尾綴後不加空格',
         level: ['', '一級標題', '二級標題', '三級標題', '四級標題', '五級標題', '六級標題'],
-        skip: '跳過編號',
-        skipDesc: '該層級標題不編號，但子標題仍正常按規則編號',
+        skip: '本級不編號',
+        skipDesc: '該層級標題不編號，但保留該層級結構，子標題仍正常按規則編號',
         seqBrackets: '編號序列/前後括符',
         seqBracketsDesc: '本級編號怎麼排：接著父級往下排（階梯式），還是從 1 重新開始',
         numberInherit: '階梯式編號',
@@ -238,10 +238,10 @@ const STRINGS = {
         stripOld: 'Try to strip the old number before numbering',
         stripOldDesc: 'Before numbering, try to remove the old number. Only a few formats are supported; if needed, remove it by hand and number again.',
         missingLevel: 'Numbering when parent levels are missing',
-        missingLevelDesc: 'How sub-headings are numbered when a parent heading is missing or skipped by a %%skip%% marker',
+        missingLevelDesc: 'How sub-headings are numbered when a parent heading is missing or skipped by a %%skip%% marker (if the note still has a properly numbered parent heading, it does not count as missing or skipped)',
         missingLevelStrict: 'Follow the heading style',
         missingLevelInherit: 'Inherit the parent heading style',
-        previewInheritTitle: 'parent levels missing or skipped: sub-headings step up to the parent style',
+        previewHypoLine: '# (suppose the level-1 heading is missing or skipped)',
         preview: 'Style preview',
         none: 'None',
         bracketAscii: '() ascii parentheses',
@@ -249,8 +249,8 @@ const STRINGS = {
         withSpace: 'Add a space after the suffix',
         noSpace: 'No space after the suffix',
         level: ['', 'Level 1 headings', 'Level 2 headings', 'Level 3 headings', 'Level 4 headings', 'Level 5 headings', 'Level 6 headings'],
-        skip: 'Skip numbering',
-        skipDesc: 'This level is not numbered, but its sub-headings still follow the numbering rules',
+        skip: "Don't number this level",
+        skipDesc: 'This level is not numbered, but the level structure stays \u2014 its sub-headings still follow the numbering rules',
         seqBrackets: 'Number sequence / brackets',
         seqBracketsDesc: 'How this level\u2019s number is arranged: continue the parent number (staircase), or restart this level from 1',
         numberInherit: 'Staircase numbering',
@@ -919,7 +919,6 @@ function previewLines(settings) {
     // ⚠️ 与真编号**同源**：第 level 级用「样式 (level-1)」的 rule 与 buildNumberChain 的同一段，
     //    所以预览里看到的编号，就是真编号在缺父号时补出来的那个值。
     if (settings.missingLevelMode === 'inherit') {
-        lines.push('# ' + S.previewInheritTitle);
         for (let level = 2; level <= 6; level++) {
             const style = level - 1;
             const rule = parseRule(settings, style);
@@ -1110,8 +1109,8 @@ function markSkippedHeadings(headings, getLine) {
 }
 
 // 「有效级别集合」= 出现过、且**至少有一个标题没被跳过**的级别（升序）。
-// ⚠️ 「跳过编号」开关**不算缺失** —— 它仍占号、仍作父级（需求文档 §3.2.1 保留；用户 2026-10-09
-//    收回了「跳过编号就当它不存在」的说法）。所以开关打开的级别**仍在**集合里。
+// ⚠️ 「本级不编号」开关**不算缺失** —— 它仍占号、仍作父级（需求文档 §3.2.1 保留；用户 2026-10-09
+//    收回了「本级不编号就当它不存在」的说法）。所以开关打开的级别**仍在**集合里。
 function effectiveLevels(headings, settings, getLine) {
     const skipped = markSkippedHeadings(headings, getLine);
     if (skipped === null) return null;
@@ -1193,11 +1192,11 @@ function planNumbering(headings, settings, getLine) {
         }
         const number = buildNumberChain(settings, byStyle)[style] || '';
 
-        // ⚠️ 「跳过编号」开关与括符/尾缀一样，是**样式**的属性，不是标题级别的属性 ——
+        // ⚠️ 「本级不编号」开关与括符/尾缀一样，是**样式**的属性，不是标题级别的属性 ——
         //    样式平移时它一起平移。用户给的黄金示例 1 正是这样：六级平移去用样式 5，
         //    而「不写编号」挂在样式 6 上，所以六级在这一档里**照样写出 `a.`**。
         if (settings.levels[style].skip) {
-            // 跳过编号时，这一级还可能要「尝试删除旧编号」（用户 2026-09-24 新增）：
+            // 本级不编号时，这一级还可能要「尝试删除旧编号」（用户 2026-09-24 新增）：
             // 只把编号部分删掉、重命名，不写任何新编号。用的还是同一个 stripOldNumber。
             // 同样跟随「编号前尝试去除旧编号」（票 09）
             if (settings.stripOldNumbers) {
@@ -2051,7 +2050,7 @@ class DiffConfirmModal extends Modal {
         this.titleEl.setText(title);
 
         // 顶部第一行：各级标题各几个（用户 2026-10-09 要求）。
-        // ⚠️ 跳过的不算；「跳过编号」开关打开的那一级**照算**（它只是不写编号，标题还在）；只列非 0 的级。
+        // ⚠️ 跳过的不算；「本级不编号」开关打开的那一级**照算**（它只是不写编号，标题还在）；只列非 0 的级。
         const counts = [0, 0, 0, 0, 0, 0, 0];
         for (const r of rows) { if (!r.skipped) counts[r.level]++; }
         const parts = [];
@@ -2265,7 +2264,31 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         // 预览框要跟着设置走，所以「改设置」统一走这个入口
         let previewEl = null;
         const renderPreview = () => {
-            if (previewEl) previewEl.setText(previewLines(settings).join('\n'));
+            if (!previewEl) return;
+            // 票 21（用户 2026-10-13）：选「继承父标题样式」时，预览改成**左右两栏对照** ——
+            //   两栏用**同一套设置**、只差这一个模式，所以「差别」一眼可见（用户嫌单栏不直观）；
+            //   选「严格按照标题样式」时仍是原来的单栏文本，渲染结果与改版前逐字节相同。
+            const inherit = settings.missingLevelMode === 'inherit';
+            previewEl.empty();
+            if (!inherit) {
+                if (previewEl.removeClass) previewEl.removeClass('heading-guard-preview-split');
+                previewEl.setText(previewLines(settings).join('\n'));
+                return;
+            }
+            previewEl.addClass('heading-guard-preview-split');
+            const withMode = (mode) => Object.assign({}, settings, { missingLevelMode: mode });
+            // ⚠️ 对照的**场景固定是「一级标题缺失」** ⇒ 两栏都只演示**二级~六级**（右栏的继承本来就只出 5 行）。
+            //   严格那一支是按 1~6 级生成的，这里要**跳过它的第一行** —— 否则左栏会多出一条 `# …一级标题` ✗
+            //   （用户 2026-10-13 对着参考图抓到过）。⚠️ 严格**单栏**那条路不受影响，仍演示完整的一~六级。
+            const cols = [
+                [t('missingLevelStrict'), previewLines(withMode('strict')).slice(1)],
+                [t('missingLevelInherit'), previewLines(settings)],
+            ];
+            for (const [title, lines] of cols) {
+                const col = previewEl.createEl('div', { cls: 'heading-guard-preview-col' });
+                col.createEl('div', { text: title, cls: 'heading-guard-preview-col-title' });
+                col.createEl('pre', { text: [t('previewHypoLine')].concat(lines).join('\n') });
+            }
         };
         const save = async () => {
             await plugin.saveSettings();
@@ -2409,7 +2432,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 .setTooltip(t('excludeAdd'))
                 .onClick(() => this.pickFolderToExclude()));
         // 「多行文本框 + 加号」必须**并排同一行**：面板默认 flex-wrap: wrap，真机量到加号会被挤到
-        // 下一行（t 差 90px）。与「跳过编号」同一套路，靠这个类改回 nowrap。
+        // 下一行（t 差 90px）。与「本级不编号」同一套路，靠这个类改回 nowrap。
         excludeRow.settingEl.addClass('heading-guard-inline-row');
 
         // 票 14（用户 2026-10-11 要求）：两段说明从「恢复默认设置」下方搬到这里 ——
@@ -2417,7 +2440,9 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         this.renderFooterHelp(containerEl);
 
         settingHeading(containerEl, t('preview'), 2);
-        previewEl = containerEl.createEl('pre', { cls: 'heading-guard-preview' });
+        // 票 21：这里从 <pre> 换成**容器**（严格模式下里面仍是原来那一坨文本，观感不变）；
+        //   「继承」模式会往里面放左右两栏（见 renderPreview）。
+        previewEl = containerEl.createEl('div', { cls: 'heading-guard-preview' });
 
         // 「样式预览」下方：保存 / 加载 / 删除标题样式（用户 2026-09-29 要求）
         const presetInput = this.renderPresetRow(containerEl);   // 票 06：要拿它设 disabled
@@ -2445,7 +2470,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
 
         };
 
-        // ── 区块：各级标题（六个可折叠分组：跳过编号 / 序列 / 编号方式 / 括符 / 间隔符 / 尾缀）──
+        // ── 区块：各级标题（六个可折叠分组：本级不编号 / 序列 / 编号方式 / 括符 / 间隔符 / 尾缀）──
         const renderLevelGroups = () => {
         for (let level = 1; level <= 6; level++) {
             const own = settings.levels[level];
@@ -2664,7 +2689,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 .setIcon(PRESET_DELETE_ICON)
                 .setTooltip(t('presetDeleteTip'))
                 .onClick(() => deleteName()));
-        // 输入框 + 三个图标按钮必须**并排在同一行**（与各级「跳过编号」同一套路）
+        // 输入框 + 三个图标按钮必须**并排在同一行**（与各级「本级不编号」同一套路）
         row.settingEl.addClass('heading-guard-inline-row');
         row.settingEl.addClass('heading-guard-preset-row');
         return nameInput;   // 票 06：交给 display()，用于「已选中方案 → 输入框不可编辑」

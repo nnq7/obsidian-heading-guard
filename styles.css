@@ -371,3 +371,40 @@
 .heading-guard-settings details.heading-guard-help-fold[open] > summary::before {
     transform: rotate(90deg);
 }
+
+/* 票 21：「继承父标题样式」时，样式预览改成**左右两栏对照**（用户 2026-10-13 要求）。
+   单栏模式仍用上面 .heading-guard-preview 那套；这里是它的 .-split 修饰。
+   ⚠️ .-split 必须把 white-space 改回 normal —— 单栏那套是 pre 语义，会吃掉两栏的排版。 */
+.heading-guard-settings .heading-guard-preview-split {
+    display: flex;
+    gap: var(--size-4-2);
+    align-items: stretch;
+    white-space: normal;
+}
+
+.heading-guard-settings .heading-guard-preview-split .heading-guard-preview-col {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: var(--size-4-1) var(--size-4-2);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-s);
+    background-color: var(--background-primary);
+}
+
+.heading-guard-settings .heading-guard-preview-split .heading-guard-preview-col-title {
+    margin-bottom: 0.3em;
+    text-align: center;
+    font-weight: var(--font-medium);
+}
+
+.heading-guard-settings .heading-guard-preview-split .heading-guard-preview-col pre {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    font-family: var(--font-monospace);
+    font-size: var(--font-ui-smaller);
+    line-height: 1.8;
+    white-space: pre;
+    overflow-x: auto;
+}
