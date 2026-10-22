@@ -1,6 +1,9 @@
 'use strict';
 
-const { Plugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon, debounce, AbstractInputSuggest, TFolder } = require('obsidian');
+// ⚠️ `Plugin` 必须**改名**再解构：它是浏览器内置的全局接口（navigator.plugins 那个），
+//    顶层再声明同名绑定会被 eslint 的 `no-redeclare` 报出来（官方审核会把 main.js 当源码扫）。
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- 单文件 CJS、无构建步骤，只能用 require
+const { Plugin: ObsidianPlugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon, debounce, AbstractInputSuggest, TFolder, normalizePath } = require('obsidian');
 
 /* ═══════════════ 全文分区目录（按出现顺序，便于导航）═══════════════
 
@@ -27,8 +30,6 @@ const { Plugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon,
 
 const STRINGS = {
     'zh-CN': {
-        langName: '简体中文',
-        lang: '语言',
         auto: '开启自动编号',
         autoDesc: '当光标出现时，自动为当前笔记标题编号',
         seconds: '秒',
@@ -74,17 +75,7 @@ const STRINGS = {
         linksUpdated: (c) => '更新' + c.files + '个文件中的' + c.links + '条链接',
         syncBlocked: 'Heading Guard:无法同步链接，标题已停止更改',
         resetDone: (n) => '已重置 ' + n + ' 个标题编号',
-        reload: '命令名称将在重载插件后更新',
         restoreDefaults: '恢复默认设置',
-        fmHelpIntro: '在笔记的 frontmatter 属性中可以指定不同笔记采用不同编号样式，包含以下三种写法：',
-        helpFoldTitle: '跳过注释与frontmatter属性说明',
-        noteHelpIntro: '在标题的下一行添加跳过注释，可以跳过当前标题不编号，示例如下：',
-        noteSampleTitle: '一级标题',
-        noteSkipLine: '表示当前标题不进行编号',
-        noteSkipsLine: '表示当前标题及其下面所有的子标题都不编号',
-        fmHelpOn: '表示当前笔记开启自动编号；',
-        fmHelpPreset: '表示当前笔记采用已保存的样式方案A进行编号（⚠️ 它不开启自动编号，要开启请写 on|方案A）；',
-        fmHelpBoth: '表示当前笔记开启自动编号且采用已保存的样式方案A进行编号。',
         restoreConfirm: '是否要恢复默认设置？',
         ok: '确定',
         cancel: '取消',
@@ -124,8 +115,6 @@ const STRINGS = {
         excludeAlready: (n) => '「' + n + '」已经在排除列表里',
     },
     'zh-TW': {
-        langName: '繁體中文',
-        lang: '語言',
         auto: '開啟自動編號',
         autoDesc: '當游標出現時，自動為目前筆記標題編號',
         seconds: '秒',
@@ -171,17 +160,7 @@ const STRINGS = {
         linksUpdated: (c) => '更新' + c.files + '個檔案中的' + c.links + '條連結',
         syncBlocked: 'Heading Guard:無法同步連結，標題已停止更改',
         resetDone: (n) => '已重設 ' + n + ' 個標題編號',
-        reload: '命令名稱將在重新載入外掛後更新',
         restoreDefaults: '恢復預設設定',
-        fmHelpIntro: '在筆記的 frontmatter 屬性中可以指定不同筆記採用不同編號樣式，包含以下三種寫法：',
-        helpFoldTitle: '跳過註解與 frontmatter 屬性說明',
-        noteHelpIntro: '在標題的下一行加入跳過註解，可以跳過目前標題不編號，示例如下：',
-        noteSampleTitle: '一級標題',
-        noteSkipLine: '表示目前標題不進行編號',
-        noteSkipsLine: '表示目前標題及其下面所有子標題都不編號',
-        fmHelpOn: '表示目前筆記開啟自動編號；',
-        fmHelpPreset: '表示目前筆記採用已儲存的樣式方案A進行編號（⚠️ 它不開啟自動編號，要開啟請寫 on|方案A）；',
-        fmHelpBoth: '表示目前筆記開啟自動編號且採用已儲存的樣式方案A進行編號。',
         restoreConfirm: '是否要恢復預設設定？',
         ok: '確定',
         cancel: '取消',
@@ -221,8 +200,6 @@ const STRINGS = {
         excludeAlready: (n) => '「' + n + '」已經在排除清單裡',
     },
     'en': {
-        langName: 'English',
-        lang: 'Language',
         auto: 'Enable auto numbering',
         autoDesc: 'Number the current note\u2019s headings automatically when the cursor appears',
         seconds: 's',
@@ -268,17 +245,7 @@ const STRINGS = {
         linksUpdated: (c) => 'Updated ' + c.links + ' link(s) in ' + c.files + ' file(s)',
         syncBlocked: 'Heading Guard: cannot sync links, headings were left unchanged',
         resetDone: (n) => 'Reset ' + n + ' heading number(s)',
-        reload: 'The command name updates after reloading the plugin',
         restoreDefaults: 'Restore defaults',
-        fmHelpIntro: 'A note\u2019s frontmatter can give that note its own numbering style. Three forms:',
-        helpFoldTitle: 'Skip comments & frontmatter',
-        noteHelpIntro: 'Add a skip comment on the line right below a heading to leave that heading unnumbered. Example:',
-        noteSampleTitle: 'Heading',
-        noteSkipLine: 'leaves this heading unnumbered',
-        noteSkipsLine: 'leaves this heading and every sub-heading below it unnumbered',
-        fmHelpOn: 'auto numbering is on for this note;',
-        fmHelpPreset: 'this note uses the saved style 方案A (⚠️ this does not turn auto numbering on — write on|方案A for that);',
-        fmHelpBoth: 'auto numbering is on for this note AND it uses the saved style 方案A.',
         restoreConfirm: 'Restore default settings?',
         ok: 'OK',
         cancel: 'Cancel',
@@ -318,12 +285,14 @@ const STRINGS = {
     },
 };
 
-// Obsidian 没把「界面语言」放进插件 API，只能从外面读。三个来源按可靠性排：
-//   ① localStorage 的 'language' —— 用户在设置里**显式选过**才有值
-//   ② <html lang="…">      —— 反映**生效**的界面语言，没显式选过也有（实测本机 = 'zh'）
-//   ③ moment.locale()      —— 同一事实的另一个来源，兜底
+// 界面语言跟着 Obsidian 走（设置 → 关于 → 语言），插件**不再提供语言开关**（用户 2026-10-22 定）。
+// 两个来源，与 drawio-preview 同一口径：
+//   ① moment.locale()  —— Obsidian 把 moment 的 locale 设成界面语言（简中 zh / 繁中 zh-tw）
+//   ② <html lang="…">  —— 同一事实的另一个来源，兜底
 // ⚠️ **绝不能用 navigator.language** —— 那是操作系统/浏览器的语言，与 Obsidian 的设置无关
 //    （用户完全可能系统中文、Obsidian 英文）。
+// ⚠️ 也**不要**读 localStorage 的 'language'：官方 API 是 getLanguage()（1.8.7 起才有），
+//    读 localStorage 会被 eslint-plugin-obsidianmd 的 prefer-get-language 报出来。
 const ZH_TW_TAGS = ['zh-tw', 'zh-hant', 'zh-hk', 'zh-mo'];
 function mapObsidianLanguage(tag) {
     const t = String(tag == null ? '' : tag).trim().toLowerCase().replace(/_/g, '-');
@@ -333,19 +302,18 @@ function mapObsidianLanguage(tag) {
 }
 function detectObsidianLanguage() {
     const sources = [
-        () => window.localStorage.getItem('language'),
-        () => document.documentElement.lang,
         () => (typeof moment !== 'undefined' && moment.locale ? moment.locale() : null),
+        () => document.documentElement.lang,
     ];
     for (const read of sources) {
         try {
             const hit = mapObsidianLanguage(read());
             if (hit) return hit;
-        } catch (err) {
+        } catch {
             // 读不到就试下一个来源（非浏览器环境 / 权限异常都落在这里）
         }
     }
-    return null;   // 全读不到 → 由调用方回落到 DEFAULT_SETTINGS（zh-CN）
+    return null;   // 全读不到 → 由调用方回落到 DEFAULT_LANGUAGE
 }
 
 function lookup(language, key, arg) {
@@ -405,8 +373,10 @@ function defaultLevel(level) {
     };
 }
 
+// 界面语言不落盘（跟 Obsidian 走），这是「连界面语言都读不到」时的最后兜底。
+const DEFAULT_LANGUAGE = 'zh-CN';
+
 const DEFAULT_SETTINGS = {
-    language: 'zh-CN',
     autoNumber: false,
     scanInterval: DEFAULT_SCAN_INTERVAL,
     stripOldNumbers: true,         // 编号前先尝试剥掉旧编号（用户 2026-09-28 要求：默认开启）
@@ -551,6 +521,9 @@ function sanitizeStylePresets(raw) {
 // alphabet 只在「剥离已有编号」时用：它给出该序列可能出现的字符，拼成字符类。
 const SEQUENCES = [
     { id: 'arabic', alphabet: '0-9' },
+    // 小写罗马：生成时把大写结果整体 toLowerCase()，判别器靠 NUMBER_SEGMENTS 的正向穷举自动带上
+    // （表是由 renderIndex 生成 1..99 得来的，所以这里加一行就够了）。用户 2026-10-22 要求放在大写上面。
+    { id: 'romanLower', alphabet: 'ivxlcdm' },
     { id: 'roman', alphabet: 'IVXLCDM' },
     { id: 'han', alphabet: '一二三四五六七八九十百千万亿零' },
     { id: 'hanUpper', alphabet: '零壹贰叁肆伍陆柒捌玖拾佰仟万亿' },
@@ -561,6 +534,7 @@ const SEQUENCE_IDS = SEQUENCES.map((item) => item.id);
 // 选项文案是记号本身，不随语言变
 const SEQUENCE_SAMPLES = {
     arabic: '1, 2, 3, 4…',
+    romanLower: 'i, ii, iii, iv…',
     roman: 'I, II, III, IV…',
     han: '一, 二, 三, 四…',
     hanUpper: '壹, 贰, 叁, 肆…',
@@ -632,6 +606,8 @@ function toHan(n, set) {
 }
 
 function renderIndex(sequence, n) {
+    // 小写罗马 = 大写结果整体转小写；**不重写**罗马算法本身（用户 2026-10-22 要求）。
+    if (sequence === 'romanLower') return toRoman(n).toLowerCase();
     if (sequence === 'roman') return toRoman(n);
     if (sequence === 'han') return toHan(n, HAN_SETS.han);
     if (sequence === 'hanUpper') return toHan(n, HAN_SETS.hanUpper);
@@ -658,7 +634,7 @@ function renderIndex(sequence, n) {
  *           尾缀   、 . - _ ) > 」 ） 】 』
  *
  * 「穷举」分两层：
- *   · **段级真的穷举** —— `NUMBER_SEGMENTS` 由 `renderIndex` **正向生成**（约 450 条），判定即查表。
+ *   · **段级真的穷举** —— `NUMBER_SEGMENTS` 由 `renderIndex` **正向生成**（实测 539 条），判定即查表。
  *     规范性因此自动成立：`IV` 在表里、`IIII` 不在；`一百零一` 在表里、`一百一` 不在。
  *   · **编号级用文法匹配** —— 6 段深度的组合是指数级，枚举不现实；回溯匹配等价地覆盖它。
  *
@@ -673,19 +649,18 @@ function renderIndex(sequence, n) {
  */
 
 const MAX_SEQ = 99;                 // 用户 2026-09-28 定：序号不可能超过 99，超过就不是编号
-const NUMBER_SEGMENTS = new Map();  // 段 → 序列 id（穷举词表）
+// 段 → 「是不是合法段」的**集合**（旧版是 Map，值记的是序列 id，但从来没人读 ⇒ 2026-10-22 改成 Set）。
+// ⚠️ 去重靠 Set 自己；`lower` / `upper` 两个序列已经覆盖 a…z / A…Z，不需要额外补录。
+const NUMBER_SEGMENTS = new Set();
+let MAX_SEG_LEN = 0;
 for (const id of SEQUENCE_IDS) {
     for (let n = 1; n <= MAX_SEQ; n++) {
         const seg = renderIndex(id, n);
-        if (seg && !NUMBER_SEGMENTS.has(seg)) NUMBER_SEGMENTS.set(seg, id);
+        if (!seg) continue;
+        NUMBER_SEGMENTS.add(seg);
+        if (seg.length > MAX_SEG_LEN) MAX_SEG_LEN = seg.length;
     }
 }
-for (let i = 0; i < 26; i++) {
-    NUMBER_SEGMENTS.set(String.fromCharCode(97 + i), 'lower');
-    NUMBER_SEGMENTS.set(String.fromCharCode(65 + i), 'upper');
-}
-let MAX_SEG_LEN = 0;
-for (const seg of NUMBER_SEGMENTS.keys()) if (seg.length > MAX_SEG_LEN) MAX_SEG_LEN = seg.length;
 
 const NUMBER_SEPS = ['.', '-', '_', ':', '~'];
 const NUMBER_BRACKETS = [['(', ')'], ['（', '）'], ['<', '>'], ['「', '」'], ['【', '】']];
@@ -693,7 +668,15 @@ const NUMBER_BRACKETS = [['(', ')'], ['（', '）'], ['<', '>'], ['「', '」'],
 // —— 原话「单边括号插件可以产生，别忘了尾缀可以做到」。
 const NUMBER_TAILS = ['、', '.', '-', '_', ')', '>', '」', '）', '】', '』'];
 const NUMBER_MAX_DEPTH = 6;         // 最多六级标题
-const RE_WS = /[\s\u00A0\u3000]/;
+// 下面这些字面量原来内联在 decideNumber 里，每次调用都重建（那个数组）或重新求值（纯读）——
+// 提到模块级只为少分配、集中可见。⚠️ 正则**一律不带 g 标志**，否则复用会带 lastIndex 状态。
+const NUMBER_OPEN_CLOSE = [['', '']].concat(NUMBER_BRACKETS);
+const RE_CJK_HEAD = /^[\u3400-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/;
+const RE_ALL_DIGITS = /^\d+$/;
+const RE_NUMBER_CORE = /^\d+\.$/;
+const RE_CORE_LETTER_DASH = /^[A-Za-z][-\u2013\u2014](?![ \t\u00A0\u3000]|$)/;
+const RE_LOWER_TOKEN = /^[a-z][a-z0-9]*$/;
+const RE_LEADING_SYMBOL = /^[-|+*`<>{}[\]]/;
 const RE_WS_HEAD = /^[\s\u00A0\u3000]+/;   // ⚠️ 必须带 `+`：`1     图形化环境` 要一次吃掉全部前导空白
 // 尺寸形态 —— 用户 2026-09-28：「疑似编号后面带单位的都不算编号部分，不删除」。
 // ⚠️ 必须允许**数字在前**：剥掉编号之后剩下的常常是 `4米特技风筝`（来自 `1-1.4米特技风筝`），
@@ -737,7 +720,7 @@ function decideNumber(text) {
         //   判据：`pure` = 到目前为止**全是阿拉伯段、且只用 `.` / `-` 分段**。
         //   ⚠️ 必须同时要求后面紧跟**中文**：否则 `12:30出发`（时间）/ `3~78位` / `1-a-b标题`
         //   （含字母段）都会被误剥 —— 这三条是既有断言的护栏，放宽口径会当场转红。
-        const cjkHead = /^[\u3400-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/.test(rest);
+        const cjkHead = RE_CJK_HEAD.test(rest);
         if (!space && !hadTail && !hadBracket && !(pure && cjkHead)) return;
         // 守卫 C：编号后面紧跟单位 → 尺寸（`1-1.4米特技风筝` / `2.4m` / `1.4 米`）
         if (RE_UNIT_HEAD.test(rest.replace(RE_WS_HEAD, ''))) return;
@@ -753,13 +736,13 @@ function decideNumber(text) {
         for (let len = Math.min(MAX_SEG_LEN, s.length - p); len >= 1; len--) {
             const seg = s.slice(p, p + len);
             if (NUMBER_SEGMENTS.has(seg)) {
-                const nextPure = (depth === 1 || pure) && (sep === '.' || sep === '-') && /^\d+$/.test(seg);
+                const nextPure = (depth === 1 || pure) && (sep === '.' || sep === '-') && RE_ALL_DIGITS.test(seg);
                 walk(p + len, depth + 1, fc, nextPure);
             }
         }
     };
     // 逐个尝试「开括符 / 无括符」，再尝试首段的各种长度（贪心从长到短，回溯兜底）
-    for (const pair of [['', '']].concat(NUMBER_BRACKETS)) {
+    for (const pair of NUMBER_OPEN_CLOSE) {
         const fo = pair[0], fc = pair[1];
         if (fo && s[0] !== fo) continue;
         const start = fo ? 1 : 0;
@@ -773,7 +756,7 @@ function decideNumber(text) {
     //   更像文件名 / 扩展名（`4.jsp` / `5.js` = 「第 4 项 jsp / 第 5 项 js」），
     //   不是「阿拉伯编号 + `.` 尾缀」→ 放弃（宁可不删）。
     //   限定「纯小写拉丁 token」是为了不误伤 `3.springboot配置` 这类（含中文 → 照旧能剥）。
-    if (/^\d+\.$/.test(core) && /^[a-z][a-z0-9]*$/.test(s.slice(best.end))) return null;
+    if (RE_NUMBER_CORE.test(core) && RE_LOWER_TOKEN.test(s.slice(best.end))) return null;
     // 守卫 B2：**编号核以「单个字母 + 连字符」开头** → 连字符词（`T-恤` / `a-b`）。
     //   ⚠️ 必须**锚定在编号核开头**（`^`），不能在核里到处扫 —— 2026-09-28 真机踩到：
     //   用户文档的三级编号 `肆.V-a 判断是否跳过编号`（一级汉字 / 二级罗马 / 三级小写、间隔符 `-`）
@@ -784,20 +767,19 @@ function decideNumber(text) {
     //   代价：**「核以单个字母开头 + 连字符」这一族全部放弃** —— `a-b` / `T-恤`（连字符词）
     //   与 `C-标题`（字母编号 + `-` 尾缀）/ `I-V` / `V-a`（字母编号 + `-` 间隔符）同形，
     //   纯形态上不可分，按「宁可不删」一并放弃。
-    if (/^[A-Za-z][-\u2013\u2014](?![ \t\u00A0\u3000]|$)/.test(core + (s[best.end] || ''))) return null;
+    if (RE_CORE_LETTER_DASH.test(core + (s[best.end] || ''))) return null;
     const content = s.slice(best.end).replace(RE_WS_HEAD, '');
     if (content === '') return null;
     // 守卫 E（2026-09-28 移植时补）：**内容以代码 / 列表符号开头** → 更像代码行而不是标题。
     //   拦 `a > b 的比较` / `1 -> 2 转换` / `i > 0 循环` 这类。旧实现靠 R6 达到同一目的
     //   （它的分段器会把 `>` 吃进编号核再整条否决）；新实现不贪婪吃符号，所以在**内容侧**补这一道。
     //   代价：`1 - 说明` 这种「编号 + 破折号开头的内容」也会被放弃（按「宁可不删」接受）。
-    if (/^[-|+*`<>{}\[\]]/.test(content)) return null;
+    if (RE_LEADING_SYMBOL.test(content)) return null;
     return { core: core, content: content };
 }
 
 // 剥掉标题开头的旧编号；认不出就返回 null（调用方保持原文不动）。
-// ⚠️ `total` 是旧接口的**遗留参数**（旧实现用它做「数字 ≥100 且 > 本篇标题总数」的守卫）。
-//    新实现按「序号 ≤ 99」一刀切，不再需要它 —— 保留参数只为不动那四处调用点，别再往里加逻辑。
+// ⚠️ 上限是「序号 ≤ 99」一刀切；旧实现还额外看过「本篇标题总数」，那个参数早已从签名里删除。
 function stripOldNumber(text) {
     const hit = decideNumber(text);
     return hit === null ? null : hit.content;
@@ -837,7 +819,7 @@ function normForGate(text) {
  * ⚠️ 实测（2026-09-26，两仓库 589 文件 / 4485 标题 / 2141 条引用 / 75 条带子路径）
  *    本规则与旧的 `normHeading+toLowerCase` **行为完全等价**（各匹配 47 条，
  *    单向差异 0/0）—— 这是**与官方对齐**，不是修 bug，不产生新的匹配能力。 */
-const LINK_NORM_AT = /[!"#$%&()*+,.:;<=>?@^`{|}~\/\[\]\\\r\n]/g;
+const LINK_NORM_AT = /[!"#$%&()*+,.:;<=>?@^`{|}~/[\]\\\r\n]/g;
 const LINK_NORM_PT = /([:#|^\\\r\n]|%%|\[\[|]])/g;
 
 function linkNormAt(text) {
@@ -853,11 +835,10 @@ function linkKeyOld(text) {
     return linkNormAt(text).toLowerCase();
 }
 
-// 排除文件夹的统一写法：反斜杠转正斜杠、去首尾空白与首尾 `/`、去掉结尾的 `/`。
-// 一律以 `/` 结尾存着，判定时直接 startsWith —— 这样 `notes` 不会误伤 `notes2`。
+// 用户手输的路径先过官方 `normalizePath()`（斜杠归一 / 去首尾斜杠 / NBSP→空格 / NFC），
+// 再补上结尾的 `/` —— 判定时直接 startsWith，这样 `notes` 不会误伤 `notes2`。
 function normalizeFolder(text) {
-    const clean = String(text == null ? '' : text)
-        .trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+    const clean = normalizePath(String(text == null ? '' : text).trim());
     return clean === '' ? '' : clean + '/';
 }
 
@@ -871,7 +852,7 @@ function templateFolderPreset(app) {
         const options = core && core.instance && core.instance.options;
         const folder = options && options.folder;
         return typeof folder === 'string' ? folder.trim() : '';
-    } catch (err) {
+    } catch {
         return '';
     }
 }
@@ -912,7 +893,6 @@ function buildNumberChain(settings, counters) {
 // 预览：把固定的六行样例按当前规则跑一遍（不去旧编号、不校验 —— 样例是定死的）。
 function previewLines(settings) {
     const numbers = buildNumberChain(settings, [0, 1, 1, 1, 1, 1, 1]);   // 预览：每一段都取序列首值
-    const S = STRINGS[settings.language] || STRINGS['zh-CN'];
     const lines = [];
     // 「继承」模式：样例整体演示**父级缺失**的样子（用户 2026-10-09 指定）——
     //   一级缺失 → 二级改用样式 1、三级用样式 2 …… 依次递进。
@@ -1253,6 +1233,7 @@ function planReset(headings, settings, getLine) {
 
 // 与 Obsidian 内部 eE 等价：只转义空格、反斜杠与控制字符，其余原样保留。
 function escapeUrl(text) {
+    // eslint-disable-next-line no-control-regex -- 有意匹配控制字符：它们必须被百分号编码，否则链接会断
     return text.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (c) => encodeURIComponent(c));
 }
 
@@ -1292,7 +1273,14 @@ function keyArray(map) {
 
 /* ───────────────────────────── 插件 ───────────────────────────── */
 
-class HeadingGuard extends Plugin {
+class HeadingGuard extends ObsidianPlugin {
+    constructor(app, manifest) {
+        super(app, manifest);
+        // 语言必须先于任何 t() 调用定好（面板文案可能早于 onload 用到），
+        // 构造时给初值，loadSettings 里再按当次环境算一遍。
+        this.language = detectObsidianLanguage() || DEFAULT_LANGUAGE;
+    }
+
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new HeadingGuardSettingTab(this.app, this));
@@ -1340,7 +1328,7 @@ class HeadingGuard extends Plugin {
     }
 
     t(key, arg) {
-        return lookup(this.settings.language, key, arg);
+        return lookup(this.language, key, arg);
     }
 
     async loadSettings() {
@@ -1353,10 +1341,10 @@ class HeadingGuard extends Plugin {
         for (let level = 1; level <= 6; level++) {
             levels[level] = sanitizeLevel(level, (raw.levels && raw.levels[level]) || {});
         }
+        // 界面语言**不入设置**：每次加载按 Obsidian 当前界面语言重算；
+        // 老 data.json 里的 language 字段直接忽略（改语言后 Obsidian 自己会重载插件，读一次就够）。
+        this.language = detectObsidianLanguage() || DEFAULT_LANGUAGE;
         this.settings = {
-            // 设置里没有 language（首装，或从没有这个字段的旧版升上来）→ 按 Obsidian 的界面语言定一次初值。
-            // 用户自己选过就永远听他的，不再被覆盖。这里**不落盘**：没动过设置就一直跟着 Obsidian 走。
-            language: STRINGS[raw.language] ? raw.language : (detectObsidianLanguage() || DEFAULT_SETTINGS.language),
             autoNumber: !!raw.autoNumber,
             scanInterval: Math.min(MAX_SCAN_INTERVAL, Math.max(MIN_SCAN_INTERVAL,
                 Number.isFinite(raw.scanInterval) ? Math.round(raw.scanInterval) : DEFAULT_SCAN_INTERVAL)),
@@ -2307,20 +2295,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         let autoToggle = null;
         let intervalSlider = null;
 
-        new Setting(containerEl)
-            .setName(t('lang'))
-            .addDropdown((dd) => dd
-                .addOption('zh-CN', STRINGS['zh-CN'].langName)
-                .addOption('zh-TW', STRINGS['zh-TW'].langName)
-                .addOption('en', STRINGS['en'].langName)
-                .setValue(settings.language)
-                .onChange(async (value) => {
-                    settings.language = value;
-                    await plugin.saveSettings();
-                    this.display();
-                    new Notice(plugin.t('reload'));
-                }));
-
         let intervalLabel = null;
         const setIntervalLabel = (seconds) => {
             if (intervalLabel) intervalLabel.setText(String(seconds) + ' ' + t('seconds'));
@@ -2434,10 +2408,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         // 「多行文本框 + 加号」必须**并排同一行**：面板默认 flex-wrap: wrap，真机量到加号会被挤到
         // 下一行（t 差 90px）。与「本级不编号」同一套路，靠这个类改回 nowrap。
         excludeRow.settingEl.addClass('heading-guard-inline-row');
-
-        // 票 14（用户 2026-10-11 要求）：两段说明从「恢复默认设置」下方搬到这里 ——
-        //   「排除文件夹」**下面**、「样式预览」**上面**。
-        this.renderFooterHelp(containerEl);
 
         settingHeading(containerEl, t('preview'), 2);
         // 票 21：这里从 <pre> 换成**容器**（严格模式下里面仍是原来那一坨文本，观感不变）；
@@ -2740,48 +2710,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         });
     }
 
-    // 「恢复默认设置」下方那段说明（用户 2026-10-11 要求）：① frontmatter 三种写法；② 跳过注释两种。
-    // ⚠️ 它**不是 Setting** —— 用户明确要求「不带任何设置项背景和方框，仅作为说明文字展示」，
-    //    所以这里直接建 div，不走 new Setting（否则会套上 .setting-item 那层卡片背景 ✗）。
-    renderFooterHelp(containerEl) {
-        const t = (key) => this.plugin.t(key);
-        // 用户 2026-10-11：两段说明**收进一个可折叠行**（原生 <details>，与各级标题分组同一套路）。
-        // ⚠️ 默认**收起** —— 只创建 details、不加 open 属性（原生行为就是收起）。
-        const fold = containerEl.createEl('details', { cls: 'heading-guard-help-fold' });
-        fold.createEl('summary', { text: t('helpFoldTitle') });
-        const box = fold.createEl('div', { cls: 'heading-guard-fm-help' });
-
-        // ① frontmatter：三行「写法 → 含义」（写法用等宽显示）
-        box.createEl('div', { text: t('fmHelpIntro'), cls: 'heading-guard-fm-help-intro' });
-        const fmLines = [
-            ['heading-guard: on', t('fmHelpOn')],
-            ['heading-guard: 方案A', t('fmHelpPreset')],
-            ['heading-guard: on|方案A', t('fmHelpBoth')],
-        ];
-        for (const [code, text] of fmLines) {
-            const line = box.createEl('div', { cls: 'heading-guard-fm-help-line' });
-            line.createEl('code', { text: code });
-            line.createEl('span', { text: text });
-        }
-
-        // ② 跳过注释（票 13）：一句说明 + 一个两行示例 + 两条含义
-        box.createEl('div', { text: t('noteHelpIntro'), cls: 'heading-guard-fm-help-intro' });
-        const sample = box.createEl('pre', { cls: 'heading-guard-fm-help-sample' });
-        sample.createEl('code', { text: '# ' + t('noteSampleTitle') + '\n%%skip%%' });
-        const noteLines = [
-            ['%%skip%%', t('noteSkipLine')],
-            ['%%skips%%', t('noteSkipsLine')],
-        ];
-        for (const [code, text] of noteLines) {
-            const line = box.createEl('div', { cls: 'heading-guard-fm-help-line' });
-            line.createEl('code', { text: code });
-            line.createEl('span', { text: text });
-        }
-    }
-
-    // 旧名保留成一层薄壳（万一别处还引用；也免得以后有人按旧名找不到）
-    renderFrontmatterHelp(containerEl) { this.renderFooterHelp(containerEl); }
-
     // 弹确认框；只有点了「确定」才真恢复。
     confirmRestoreDefaults() {
         const t = (key) => this.plugin.t(key);
@@ -2795,14 +2723,10 @@ class HeadingGuardSettingTab extends PluginSettingTab {
 
     async restoreDefaults() {
         const plugin = this.plugin;
-        // 语言**不参与重置**（理由见 DEVELOPMENT 承重项 §16）：它是「这个用户的界面偏好」，
-        // 重置时若突然换语言，面板会在你点完的一瞬间整个变成另一种语言。其余全部回默认值。
-        const keepLanguage = plugin.settings.language;
-        // 已保存的标题样式是**用户一条条攒出来的数据**，同样不参与重置 ——
+        // 已保存的标题样式是**用户一条条攒出来的数据**，不参与重置 ——
         // 否则点一下「恢复默认设置」把样式全清了，那是数据丢失，不叫恢复默认。
         const keepPresets = plugin.settings.stylePresets;
         plugin.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-        plugin.settings.language = keepLanguage;
         plugin.settings.stylePresets = keepPresets;
         await plugin.saveSettings();
         plugin.stopTimer();            // 默认 autoNumber=false，兜底时钟要关掉
