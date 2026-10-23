@@ -106,7 +106,7 @@ See [Releases](https://github.com/nnq7/obsidian-heading-guard/releases).
 
 ## License
 
-[MIT](https://github.com/nnq7/obsidian-heading-guard/blob/main/LICENSE) © hyc
+[MIT](https://github.com/nnq7/obsidian-heading-guard/blob/main/LICENSE) © nnq7
 
 ## Tutorial
 

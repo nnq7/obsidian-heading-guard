@@ -106,7 +106,7 @@ Obsidian 笔记标题自动编号插件：一至六级标题按你的规则加�
 
 ## 许可
 
-[MIT](https://github.com/nnq7/obsidian-heading-guard/blob/main/LICENSE) © hyc
+[MIT](https://github.com/nnq7/obsidian-heading-guard/blob/main/LICENSE) © nnq7
 
 ## 使用教程
 
