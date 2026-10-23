@@ -6,6 +6,8 @@ An Obsidian plugin that numbers the headings in your notes level by level (H1–
 
 > Fully offline: no network requests, no telemetry, and no access to files outside your vault.
 
+<img width="720" alt="动画3" src="https://github.com/user-attachments/assets/2f99d7bd-4a5f-40bd-b986-a238068c249e" />
+
 ## Features
 
 - Per-level rules for all six heading levels: number sequence (Arabic, Roman in either case, Chinese numerals…), brackets, level separator, and suffix;
