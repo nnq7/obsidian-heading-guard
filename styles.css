@@ -19,7 +19,7 @@
 
 /* 例外：「开关 + 下拉框」或「多个下拉框」的行必须**并排**（用户 2026-09-28 / 2026-09-29 要求）——
    目前是每级的「跳过编号」、「子标题是否继承父标题的跳过注释」、「全局编号尾缀」、
-   「保存标题样式」（输入框 + 四个图标按钮）、以及「排除文件夹」（多行文本框 + 加号）这五类行。
+   「保存标题样式」（输入框 + 三个图标按钮）、以及「排除文件夹」（多行文本框 + 加号）这五类行。
    nowrap 禁止换行；flex-shrink: 0 让控件保持原始宽度 —— 改由左侧描述文字让位
    （描述本来就能折行，实测在 420px 窄面板下也不溢出）。
    ⚠️「全局编号尾缀」那一行是 2026-09-29 补进来的：真机量到两个下拉原来被挤成上下两行
@@ -42,6 +42,46 @@
     flex: 1 1 auto;
     min-width: 8em;
     width: auto;
+}
+
+/* 「保存标题样式」栏里的那排样式按钮（用户 2026-10-23 要求）：点一下就套用，不用先展开列表。
+   第一位固定是虚拟的「默认样式」。
+   ⚠️ 它就挂在 `.setting-item` **内部**（用户要求「在栏的范围内下面」，放外面会跑到栏框外），
+      所以靠两条让它独占第二行：父级 flex-wrap: wrap + 自己 flex-basis: 100%。
+      再补一条 grid-column —— 万一主题把 `.setting-item` 改成 grid 布局，它也能跨满整行。
+   ⚠️ 不能套 inline-row（那条只作用于 .setting-item-control，而且是 nowrap）。 */
+.heading-guard-settings .heading-guard-preset-row {
+    flex-wrap: wrap;
+}
+
+.heading-guard-settings .heading-guard-preset-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-4-2, 8px);
+    flex: 1 1 100%;
+    grid-column: 1 / -1;
+    min-width: 0;
+    margin: 0.5em 0 0;
+}
+
+.heading-guard-settings .heading-guard-preset-chip {
+    max-width: 16em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    height: auto;
+    padding: 0.25em 0.7em;
+    font-size: var(--font-ui-smaller);
+    line-height: 1.4;
+    box-shadow: none;
+    border: 1px solid var(--background-modifier-border);
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+}
+
+.heading-guard-settings .heading-guard-preset-chip:hover {
+    border-color: var(--background-modifier-border-hover);
+    background-color: var(--background-modifier-hover);
 }
 
 /* 检测间隔的秒数标签（跟滑块同一行） */

@@ -14,7 +14,7 @@ An Obsidian plugin that numbers the headings in your notes level by level (H1–
 - Per-note style via frontmatter: `heading-guard: on` / `heading-guard: 方案A` / `heading-guard: on|方案A`;
 - When a parent heading is missing, or levels skip a number, sub-headings are numbered by level by default — or you can make them shift up one level instead;
 - Save your current rules as a named style, then switch between styles with one click;
-- Only touches a note when something actually changed (it compares heading signatures), so opening a note never rewrites it.
+- Only writes after you have changed a heading — notes that didn't change are never rewritten.
 
 > A convenient companion for renaming headings: <https://github.com/PlayerMiller109/obsidian-keep-headings>
 
@@ -73,19 +73,13 @@ Put the skip comment on the line **right below** the heading (putting it on the 
 
 ### Give one note its own style: frontmatter
 
-Add a `heading-guard` property to the note's frontmatter. There are three forms:
+Add a `heading-guard` property to the note's frontmatter. Three forms:
 
 - `heading-guard: on` — turn **auto numbering on** for this note, using the rules from the plugin settings;
 - `heading-guard: 方案A` — use the saved style named `方案A` for this note, but **do not** turn auto numbering on;
 - `heading-guard: on|方案A` — turn auto numbering on and use the saved style `方案A`.
 
-A few more cases:
-
-- `heading-guard: off` — turn auto numbering off for this note (useful when the scope is `All notes`);
-- The style name must be one you **have already saved**. If it doesn't exist, the note is left untouched and you get a notice about the unknown style;
-- Writing only a style name does **not** enable auto numbering: with the scope set to `Only opted-in notes`, `on` has to be present (write `on|方案A`). The two manual commands ignore this and use the style directly;
-- If the value is incomplete (for example `heading-guard: on|` with no name yet), the plugin assumes you're still typing and does nothing;
-- Boolean values work too: `true` / `yes` behave like `on`, `false` / `no` like `off`.
+> The style name must match one you **have saved**. With the scope set to `Only opted-in notes`, only `on` or `on|方案A` turns auto numbering on — a bare style name does not.
 
 ## Data and privacy
 
@@ -96,13 +90,13 @@ A few more cases:
 
 ## FAQ
 
-**Numbering doesn't happen.** Check that **Enable auto numbering** is on. If the scope is `Only opted-in notes`, the note's frontmatter must contain `heading-guard: on`. Running a command manually ignores the scope.
+**Numbering doesn't happen.** Check that **Enable auto numbering** is on. If the scope is `Only opted-in notes`, the note's frontmatter must contain `heading-guard: on`.
 
 **Why was a heading not numbered?** Three possibilities: the note is inside an **excluded folder**, the line below that heading contains `%%skip%%` / `%%skips%%`, or that level has **Don't number this level** turned on.
 
 **Where does `%%skip%%` go?** On the line **right below** the heading. On the heading's own line it does nothing.
 
-**I renamed a heading but the links didn't change.** Link syncing only works when the link can be resolved; skipped or unnumbered headings are not rewritten. If syncing fails, you'll see a "cannot sync links" notice and the headings are left unchanged.
+**I renamed a heading but the links didn't change.** Skipped or unnumbered headings are not rewritten; if syncing fails, you'll see a "cannot sync links" notice and the headings are left unchanged.
 
 **I changed Obsidian's language but the plugin UI didn't change.** The plugin follows Obsidian's language; after switching, Obsidian asks you to reload, and the plugin picks up the new language then.
 
