@@ -42,8 +42,8 @@ const STRINGS = {
         exclude: '排除文件夹',
         excludeDesc: '一行一个文件夹路径(相对仓库根目录，例如"文件夹1/文件夹2")，这些文件夹里的笔记不受自动编号影响',
         excludeFromTemplates: '从内置「模板」插件读到的模板文件夹已填入（读不到就留空）',
-        stripOld: '编号前尝试去除旧编号',
-        stripOldDesc: '编号之前，尝试删除旧编号，支持的格式有限，必要时请手动删除后重新编号',
+        stripOld: '编号前尝试删除旧编号',
+        stripOldDesc: '注意！为防止误删除标题内容，请勿在标题内容中加空格',
         missingLevel: '父级别缺失或级别不连续时编号方式',
         missingLevelDesc: '父级标题缺失或被注释%%skip%%跳过时，子标题如何编号（只要笔记中存在一个正常编号的父标题就不算缺失或跳过）',
         missingLevelStrict: '严格按照标题样式',
@@ -126,8 +126,8 @@ const STRINGS = {
         exclude: '排除資料夾',
         excludeDesc: '一行一個資料夾路徑(相對於倉庫根目錄，例如"資料夾1/資料夾2")，這些資料夾裡的筆記不受自動編號影響',
         excludeFromTemplates: '從內建「範本」外掛讀到的範本資料夾已填入（讀不到就留空）',
-        stripOld: '編號前嘗試去除舊編號',
-        stripOldDesc: '編號之前，嘗試刪除舊編號，支援的格式有限，必要時請手動刪除後重新編號',
+        stripOld: '編號前嘗試刪除舊編號',
+        stripOldDesc: '注意！為防止誤刪除標題內容，請勿在標題內容中加空格',
         missingLevel: '父層級缺失或層級不連續時編號方式',
         missingLevelDesc: '父級標題缺失或被註解%%skip%%跳過時，子標題如何編號（只要筆記中存在一個正常編號的父標題就不算缺失或跳過）',
         missingLevelStrict: '嚴格依照標題樣式',
@@ -210,8 +210,8 @@ const STRINGS = {
         exclude: 'Excluded folders',
         excludeDesc: 'One folder path per line (relative to the vault root, e.g. "folder1/folder2"). Notes inside them are not affected by auto numbering.',
         excludeFromTemplates: 'Prefilled from the core Templates plugin folder (left empty if unavailable)',
-        stripOld: 'Try to strip the old number before numbering',
-        stripOldDesc: 'Before numbering, try to remove the old number. Only a few formats are supported; if needed, remove it by hand and number again.',
+        stripOld: 'Try to delete the old number before numbering',
+        stripOldDesc: 'Note: to avoid deleting part of the heading text, do not put spaces in the heading.',
         missingLevel: 'Numbering when parent levels are missing',
         missingLevelDesc: 'How sub-headings are numbered when a parent heading is missing or skipped by a %%skip%% marker (if the note still has a properly numbered parent heading, it does not count as missing or skipped)',
         missingLevelStrict: 'Follow the heading style',
@@ -357,6 +357,20 @@ const SCOPE_KEY = 'heading-guard';
 
 
 const SUFFIX_CHOICES = ['none', '、', '.', '-', '_', ')', '>', '」'];
+
+
+
+
+
+
+
+
+const suffixChoicesFor = (level, own) => {
+    
+    
+    const singleSegment = own.brackets === 'none' && (level === 1 || own.numbering === 'restart');
+    return singleSegment ? SUFFIX_CHOICES.filter((c) => c !== 'none') : SUFFIX_CHOICES;
+};
 const SEPARATOR_CHOICES = ['none', '.', '-', '_', ':', '~'];
 const BRACKET_CHOICES = ['none', '()', '（）', '<>', '「」', '【】'];
 
@@ -369,7 +383,9 @@ function defaultLevel(level) {
         brackets: 'none',
         separator: level === 1 ? 'none' : '.',
         
-        suffix: { char: 'none', space: true },
+        
+        
+        suffix: { char: level === 1 ? '.' : 'none', space: true },
         
         numbering: 'inherit',
     };
@@ -697,16 +713,9 @@ const NUMBER_BRACKETS = [['(', ')'], ['（', '）'], ['<', '>'], ['「', '」'],
 
 
 const NUMBER_TAILS = ['、', '.', '-', '_', ')', '>', '」', '）', '】', '』'];
-const NUMBER_MAX_DEPTH = 6;         
 
 
 const NUMBER_OPEN_CLOSE = [['', '']].concat(NUMBER_BRACKETS);
-const RE_CJK_HEAD = /^[\u3400-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/;
-const RE_ALL_DIGITS = /^\d+$/;
-const RE_NUMBER_CORE = /^\d+\.$/;
-const RE_CORE_LETTER_DASH = /^[A-Za-z][-\u2013\u2014](?![ \t\u00A0\u3000]|$)/;
-const RE_LOWER_TOKEN = /^[a-z][a-z0-9]*$/;
-const RE_LEADING_SYMBOL = /^[-|+*`<>{}[\]]/;
 const RE_WS_HEAD = /^[\s\u00A0\u3000]+/;   
 
 
@@ -715,97 +724,62 @@ const RE_WS_HEAD = /^[\s\u00A0\u3000]+/;
 
 
 
-const RE_UNIT_HEAD = /^(\d+(\.\d+)?\s*)?(米|厘米|毫米|公分|寸|尺|吋|km|dm|cm|mm|kg|千克|克|吨|m)(?![A-Za-z])/;
+
+
+
+
+
+
+
+
 
 
 function decideNumber(text) {
     if (!text) return null;
-    
-    
-    
-    
-    if (/[\\/]/.test(text)) return null;
     const s = text.replace(RE_WS_HEAD, '');
 
-    let best = null;
-    
-    const finish = (pos, fc, pure) => {
-        let p = pos;
-        const hadBracket = !!(fc && s[p] === fc);
-        if (fc) { if (s[p] !== fc) return; p++; }
-        let hadTail = false, tailCh = '';
-        if (NUMBER_TAILS.includes(s[p])) { tailCh = s[p]; p++; hadTail = true; }
-        const rest = s.slice(p);
-        if (rest === '') return;
-        const space = RE_WS_HEAD.test(rest);
-        
-        if (tailCh && /[-\u2013\u2014]/.test(tailCh) && /[A-Za-z]/.test(rest[0] || '')) return;
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        const cjkHead = RE_CJK_HEAD.test(rest);
-        if (!space && !hadTail && !hadBracket && !(pure && cjkHead)) return;
-        
-        if (RE_UNIT_HEAD.test(rest.replace(RE_WS_HEAD, ''))) return;
-        if (!best || p > best.end) best = { end: p };
-    };
-    
-    const walk = (pos, depth, fc, pure) => {
-        if (depth >= 1) finish(pos, fc, pure);
-        if (depth >= NUMBER_MAX_DEPTH) return;          
-        if (!NUMBER_SEPS.includes(s[pos])) return;
-        const p = pos + 1;
-        const sep = s[pos];
-        for (let len = Math.min(MAX_SEG_LEN, s.length - p); len >= 1; len--) {
-            const seg = s.slice(p, p + len);
-            if (NUMBER_SEGMENTS.has(seg)) {
-                const nextPure = (depth === 1 || pure) && (sep === '.' || sep === '-') && RE_ALL_DIGITS.test(seg);
-                walk(p + len, depth + 1, fc, nextPure);
-            }
-        }
-    };
-    
     for (const pair of NUMBER_OPEN_CLOSE) {
         const fo = pair[0], fc = pair[1];
         if (fo && s[0] !== fo) continue;
-        const start = fo ? 1 : 0;
-        for (let len = Math.min(MAX_SEG_LEN, s.length - start); len >= 1; len--) {
-            if (NUMBER_SEGMENTS.has(s.slice(start, start + len))) walk(start + len, 1, fc, false);
+
+        
+        let pos = fo ? 1 : 0;
+        const first = eatSegment(s, pos);
+        if (!first) continue;
+        pos += first;
+        for (;;) {
+            if (!NUMBER_SEPS.includes(s[pos])) break;
+            const len = eatSegment(s, pos + 1);
+            if (!len) break;
+            pos += 1 + len;
         }
+
+        
+        if (fc && s[pos] === fc) {
+            
+            let end = pos + 1;
+            if (NUMBER_TAILS.includes(s[end])) end++;
+            const afterBracket = s.slice(end).replace(RE_WS_HEAD, '');
+            return afterBracket === '' ? null : { core: s.slice(0, end), content: afterBracket };
+        }
+        const hadTail = NUMBER_TAILS.includes(s[pos]);
+        const end = hadTail ? pos + 1 : pos;
+        if (end >= s.length) return null;
+        const rest = s.slice(end);
+        if (!hadTail && !RE_WS_HEAD.test(rest)) return null;
+        const content = rest.replace(RE_WS_HEAD, '');
+        return content === '' ? null : { core: s.slice(0, end), content: content };
     }
-    if (!best) return null;
-    const core = s.slice(0, best.end);
-    
-    
-    
-    
-    if (RE_NUMBER_CORE.test(core) && RE_LOWER_TOKEN.test(s.slice(best.end))) return null;
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    if (RE_CORE_LETTER_DASH.test(core + (s[best.end] || ''))) return null;
-    const content = s.slice(best.end).replace(RE_WS_HEAD, '');
-    if (content === '') return null;
-    
-    
-    
-    
-    if (RE_LEADING_SYMBOL.test(content)) return null;
-    return { core: core, content: content };
+    return null;
+}
+
+
+
+function eatSegment(s, pos) {
+    for (let len = Math.min(MAX_SEG_LEN, s.length - pos); len >= 1; len--) {
+        if (NUMBER_SEGMENTS.has(s.slice(pos, pos + len))) return len;
+    }
+    return 0;
 }
 
 
@@ -828,8 +802,18 @@ function normHeading(text) {
 
 
 
+
+
+
+
+
+
 function normForGate(text) {
-    return text == null ? '' : String(text).replace(/\s+/g, ' ').trim().normalize('NFC');
+    return String(text == null ? '' : text)
+        .replace(/`+|\*\*|__|~~|==|<[^>]*>|\[\[|\]\]|\*|_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .normalize('NFC');
 }
 
 
@@ -993,9 +977,19 @@ function diffSegments(oldText, newText) {
 
 
 
+
+
+
+function prefixSegments(prefix, body) {
+    const out = [];
+    if (prefix) out.push({ text: prefix, changed: true });
+    if (body) out.push({ text: body, changed: false });
+    return out;
+}
+
 function previewRows(headings, getLine, plan) {
-    const nextByLine = new Map();
-    for (const item of plan || []) nextByLine.set(item.line, item.next);
+    const itemByLine = new Map();
+    for (const item of plan || []) itemByLine.set(item.line, item);
     
     
     const skipped = markSkippedHeadings(headings, getLine);
@@ -1005,55 +999,24 @@ function previewRows(headings, getLine, plan) {
         const heading = headings[i];
         const fresh = readFreshHeading(heading, getLine);
         if (!fresh) return null;
+        const item = itemByLine.get(fresh.line) || null;
         rows.push({
             line: fresh.line,
             level: heading.level,
             skipped: skipped[i],
             old: fresh.text,
-            next: nextByLine.has(fresh.line) ? nextByLine.get(fresh.line) : fresh.text,
+            next: item ? item.next : fresh.text,
+            
+            oldPrefix: item ? item.oldPrefix : '',
+            newPrefix: item ? item.newPrefix : '',
+            body: item ? item.body : fresh.text,
         });
     }
     return rows;
 }
 
-function escapeRe(text) {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 
-
-
-function buildStrippers(settings) {
-    const separators = new Set();
-    const sequences = new Set();
-    for (let level = 1; level <= 6; level++) {
-        sequences.add(settings.levels[level].sequence);
-        if (level > 1) {
-            const sep = settings.levels[level].separator;
-            if (sep && sep !== 'none') separators.add(sep);
-        }
-    }
-    const alt = [...separators].sort((a, b) => b.length - a.length).map(escapeRe).join('|');
-    const alphabet = SEQUENCES.filter((item) => sequences.has(item.id))
-        .map((item) => item.alphabet).join('') || '0-9';
-    const charset = '[' + alphabet + ']';
-    
-    const number = alt ? charset + '+(?:(?:' + alt + ')' + charset + '+)*' : charset + '+';
-
-    const strippers = [null];
-    for (let level = 1; level <= 6; level++) {
-        const rule = parseRule(settings, level);
-        strippers[level] = new RegExp(
-            '^' + escapeRe(rule.front) + number + escapeRe(rule.back) + escapeRe(rule.tail)
-        );
-    }
-    return strippers;
-}
-
-function stripNumbering(text, strippers, level) {
-    const match = strippers[level].exec(text);
-    return match ? text.slice(match[0].length) : text;
-}
 
 
 
@@ -1156,7 +1119,6 @@ function levelOfStyle(settings, effective, k) {
 function planNumbering(headings, settings, getLine) {
     const rules = [null];
     for (let level = 1; level <= 6; level++) rules[level] = parseRule(settings, level);
-    const strippers = buildStrippers(settings);
 
     
     
@@ -1191,7 +1153,12 @@ function planNumbering(headings, settings, getLine) {
                 const cleaned = stripOldNumber(fresh.text);
                 const next = cleaned === null ? fresh.text : cleaned;
                 if (next !== fresh.text) {
-                    plan.push({ level, line: fresh.line, old: fresh.text, next, changed: true });
+                    plan.push({
+                        level, line: fresh.line, old: fresh.text, next, changed: true,
+                        oldPrefix: fresh.text.slice(0, fresh.text.length - next.length),
+                        newPrefix: '',
+                        body: next,
+                    });
                 }
             }
             continue; 
@@ -1224,24 +1191,42 @@ function planNumbering(headings, settings, getLine) {
                 const cleaned = stripOldNumber(fresh.text);
                 const next = cleaned === null ? fresh.text : cleaned;
                 if (next !== fresh.text) {
-                    plan.push({ level, line: fresh.line, old: fresh.text, next, changed: true });
+                    plan.push({
+                        level, line: fresh.line, old: fresh.text, next, changed: true,
+                        oldPrefix: fresh.text.slice(0, fresh.text.length - next.length),
+                        newPrefix: '',
+                        body: next,
+                    });
                 }
             }
             continue; 
         }
 
         
-        let title = stripNumbering(fresh.text, strippers, style);
         
         
         
         
-        if (settings.stripOldNumbers) {
-            const cleaned = stripOldNumber(title);
-            if (cleaned !== null) title = cleaned;
-        }
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        const cleaned = stripOldNumber(fresh.text);
+        const title = cleaned === null ? fresh.text : cleaned;
         const next = assembleTitle(rule, number, title);
-        plan.push({ level, line: fresh.line, old: fresh.text, next, changed: next !== fresh.text });
+        
+        
+        plan.push({
+            level, line: fresh.line, old: fresh.text, next, changed: next !== fresh.text,
+            oldPrefix: fresh.text.slice(0, fresh.text.length - title.length),
+            newPrefix: next.slice(0, next.length - title.length),
+            body: title,
+        });
     }
     return plan;
 }
@@ -1265,7 +1250,12 @@ function planReset(headings, settings, getLine) {
 
         const next = stripOldNumber(fresh.text);
         if (next === null || next === fresh.text) continue;
-        plan.push({ level: heading.level, line: fresh.line, old: fresh.text, next });
+        plan.push({
+            level: heading.level, line: fresh.line, old: fresh.text, next,
+            oldPrefix: fresh.text.slice(0, fresh.text.length - next.length),
+            newPrefix: '',
+            body: next,
+        });
     }
     return plan;
 }
@@ -2123,14 +2113,14 @@ class DiffConfirmModal extends Modal {
 
             
             const left = line.createEl('div', { cls: 'heading-guard-diff-cell heading-guard-diff-old' });
-            paintDiffSegments(left, diffSegments(row.old, row.next).left, 'heading-guard-diff-del', levelLabel);
+            paintDiffSegments(left, prefixSegments(row.oldPrefix, row.body), 'heading-guard-diff-del', levelLabel);
 
             
             const right = line.createEl('div', {
                 cls: 'heading-guard-diff-cell heading-guard-diff-new',
                 attr: { contenteditable: 'true', spellcheck: 'false' },
             });
-            paintDiffSegments(right, diffSegments(row.old, row.next).right, 'heading-guard-diff-ins');
+            paintDiffSegments(right, prefixSegments(row.newPrefix, row.body), 'heading-guard-diff-ins');
             row.el = right;
 
             
@@ -2327,14 +2317,16 @@ class HeadingGuardSettingTab extends PluginSettingTab {
             
             
             
+            
             const cols = [
-                [t('missingLevelStrict'), previewLines(withMode('strict'), sampleTitles).slice(1)],
-                [t('missingLevelInherit'), previewLines(settings, sampleTitles)],
+                [t('missingLevelStrict'), previewLines(withMode('strict'), sampleTitles), false],
+                [t('missingLevelInherit'), previewLines(settings, sampleTitles), true],
             ];
-            for (const [title, lines] of cols) {
+            for (const [title, lines, withHypoLine] of cols) {
                 const col = previewEl.createEl('div', { cls: 'heading-guard-preview-col' });
                 col.createEl('div', { text: title, cls: 'heading-guard-preview-col-title' });
-                col.createEl('pre', { text: [t('previewHypoLine')].concat(lines).join('\n') });
+                const body = withHypoLine ? [t('previewHypoLine')].concat(lines) : lines;
+                col.createEl('pre', { text: body.join('\n') });
             }
         };
         const save = async () => {
@@ -2500,6 +2492,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         };
 
         
+        let suffixDirty = false;   
         const renderLevelGroups = () => {
         for (let level = 1; level <= 6; level++) {
             const own = settings.levels[level];
@@ -2535,6 +2528,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 .addDropdown((dd) => pickDropdown(dd, BRACKET_CHOICES, bracketLabel, own.brackets, async (value) => {
                     own.brackets = value;
                     await save();
+                    refreshSuffix();   
                 }));
             seqRow.settingEl.addClass('heading-guard-inline-row');   
             
@@ -2549,6 +2543,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                         .setValue(own.numbering).onChange(async (value) => {
                             own.numbering = value;
                             await save();
+                            refreshSuffix();   
                         });
                 });
             }
@@ -2566,11 +2561,20 @@ class HeadingGuardSettingTab extends PluginSettingTab {
 
             
             
+            
+            
+            if (suffixChoicesFor(level, own).indexOf(own.suffix.char) < 0) {
+                own.suffix.char = '.';
+                suffixDirty = true;
+            }
+
+            
+            
             const suffixRow = new Setting(group)
                 .setName(t('lvSuffix'))
                 .setDesc(t('lvSuffixDesc'))
                 .addDropdown((dd) => {
-                    pickDropdown(dd, SUFFIX_CHOICES, symbolLabel, own.suffix.char, async (value) => {
+                    pickDropdown(dd, suffixChoicesFor(level, own), symbolLabel, own.suffix.char, async (value) => {
                         own.suffix.char = value;
                         await save();
                     });
@@ -2585,6 +2589,29 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 });
             
             suffixRow.settingEl.addClass('heading-guard-inline-row');
+
+            
+            
+            
+            
+            function refreshSuffix() {
+                
+                if (suffixChoicesFor(level, own).indexOf(own.suffix.char) < 0) {
+                    own.suffix.char = '.';
+                    void save();
+                }
+                
+                
+                const host = suffixRow.controlEl;
+                const sel = host && typeof host.querySelector === 'function' ? host.querySelector('select') : null;
+                if (!sel) return;
+                const keep = own.suffix.char;
+                sel.innerHTML = '';
+                for (const value of suffixChoicesFor(level, own)) {
+                    sel.createEl('option', { value: value, text: symbolLabel(value) });
+                }
+                sel.value = keep;
+            }
         }
 
         };
@@ -2592,6 +2619,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         
         renderGlobalAndMissing();
         renderLevelGroups();
+        if (suffixDirty) void plugin.saveSettings();   
 
         
         
@@ -2810,6 +2838,7 @@ module.exports.__internals = {
     NOTE_ENTER_DELAY_MS,
     EDIT_DEBOUNCE_MS,
     SUFFIX_CHOICES,
+    suffixChoicesFor,
     SEPARATOR_CHOICES,
     BRACKET_CHOICES,
     SAMPLE_TITLES,
@@ -2827,10 +2856,9 @@ module.exports.__internals = {
     diffSegments,
     previewRows,
     DiffConfirmModal,
-    buildStrippers,
-    stripNumbering,
     assembleTitle,
     readHeadingLine,
+    prefixSegments,
     readFreshHeading,
     markSkippedHeadings,
     effectiveLevels,
