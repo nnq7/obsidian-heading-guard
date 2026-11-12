@@ -1,33 +1,5 @@
 'use strict';
-
-
-
-
 const { Plugin: ObsidianPlugin, PluginSettingTab, Setting, Notice, MarkdownView, Modal, setIcon, debounce, AbstractInputSuggest, TFolder, normalizePath } = require('obsidian');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const STRINGS = {
     'zh-CN': {
         auto: '开启自动编号',
@@ -281,15 +253,6 @@ const STRINGS = {
         excludeAlready: (n) => '\u201C' + n + '\u201D is already excluded',
     },
 };
-
-
-
-
-
-
-
-
-
 const ZH_TW_TAGS = ['zh-tw', 'zh-hant', 'zh-hk', 'zh-mo'];
 function mapObsidianLanguage(tag) {
     const t = String(tag == null ? '' : tag).trim().toLowerCase().replace(/_/g, '-');
@@ -307,99 +270,50 @@ function detectObsidianLanguage() {
             const hit = mapObsidianLanguage(read());
             if (hit) return hit;
         } catch {
-            
         }
     }
     return null;   
 }
-
 function lookup(language, key, arg) {
     const dict = STRINGS[language] || STRINGS['zh-CN'];
-    
-    
-    
     let value = dict[key];
     if (value === undefined) value = STRINGS.en[key];
     if (value === undefined) value = key;
     return typeof value === 'function' ? value(arg) : value;
 }
-
-
-
 const DEFAULT_SCAN_INTERVAL = 10;
 const MIN_SCAN_INTERVAL = 5;
 const MAX_SCAN_INTERVAL = 60;
 const NOTE_ENTER_DELAY_MS = 2000;  
 const EDIT_DEBOUNCE_MS = 1000;     
-
-
-
-
-
 const SKIP_MARKER = '%%skip%%';
 const SKIP_TREE_MARKER = '%%skips%%';
-
-
-
-
-
 const SCOPE_CHOICES = ['all', 'optIn'];
-
-
-
-
 const MISSING_LEVEL_CHOICES = ['strict', 'inherit'];
 const SCOPE_KEY = 'heading-guard';
-
-
-
-
-
-
 const SUFFIX_CHOICES = ['none', '、', '.', '-', '_', ')', '>', '」'];
-
-
-
-
-
-
-
-
 const suffixChoicesFor = (level, own) => {
-    
-    
     const singleSegment = own.brackets === 'none' && (level === 1 || own.numbering === 'restart');
     return singleSegment ? SUFFIX_CHOICES.filter((c) => c !== 'none') : SUFFIX_CHOICES;
 };
 const SEPARATOR_CHOICES = ['none', '.', '-', '_', ':', '~'];
 const BRACKET_CHOICES = ['none', '()', '（）', '<>', '「」', '【】'];
-
 const SAMPLE_TITLES = ['一级标题', '二级标题', '三级标题', '四级标题', '五级标题', '六级标题'];
-
 function defaultLevel(level) {
     return {
         skip: false,
         sequence: 'arabic',
         brackets: 'none',
         separator: level === 1 ? 'none' : '.',
-        
-        
-        
         suffix: { char: level === 1 ? '.' : 'none', space: true },
-        
         numbering: 'inherit',
     };
 }
-
-
 const DEFAULT_LANGUAGE = 'zh-CN';
-
 const DEFAULT_SETTINGS = {
     autoNumber: false,
     scanInterval: DEFAULT_SCAN_INTERVAL,
     stripOldNumbers: true,         
-    
-    
     missingLevelMode: 'strict',
     scope: 'all',                  
     excludeFolders: [],            
@@ -407,20 +321,9 @@ const DEFAULT_SETTINGS = {
         1: defaultLevel(1), 2: defaultLevel(2), 3: defaultLevel(3),
         4: defaultLevel(4), 5: defaultLevel(5), 6: defaultLevel(6),
     },
-    
-    
-    
-    
     stylePresets: [],
 };
-
-
-
-
 const pick = (list, value, fallback) => (list.indexOf(value) >= 0 ? value : fallback);
-
-
-
 function sanitizeLevel(level, saved) {
     const base = defaultLevel(level);
     const raw = saved || {};
@@ -429,9 +332,6 @@ function sanitizeLevel(level, saved) {
     base.brackets = pick(BRACKET_CHOICES, raw.brackets, base.brackets);
     base.separator = pick(SEPARATOR_CHOICES, raw.separator, base.separator);
     base.numbering = raw.numbering === 'restart' ? 'restart' : 'inherit';
-    
-    
-    
     const old = raw.suffix || {};
     base.suffix = raw.suffix && old.enabled === false
         ? { char: 'none', space: old.space !== false }
@@ -441,12 +341,6 @@ function sanitizeLevel(level, saved) {
         };
     return base;
 }
-
-
-
-
-
-
 function scrollHostOf(el) {
     let node = el;
     while (node && node.parentElement) {
@@ -455,7 +349,6 @@ function scrollHostOf(el) {
     }
     return el;
 }
-
 function defaultStylePreset() {
     const levels = {};
     for (let level = 1; level <= 6; level++) levels[level] = defaultLevel(level);
@@ -464,41 +357,24 @@ function defaultStylePreset() {
         missingLevelMode: DEFAULT_SETTINGS.missingLevelMode,
     };
 }
-
-
-
-
 const DEFAULT_PRESET_NAME = 'Default';
-
-
 function builtinDefaultPreset() {
     const preset = defaultStylePreset();
     preset.name = DEFAULT_PRESET_NAME;
     return preset;
 }
-
-
-
-
 function withBuiltinDefaultPreset(list) {
     if (list.some((item) => item.name === DEFAULT_PRESET_NAME)) return list;
     const out = list.slice();
     out.push(builtinDefaultPreset());
     return out;
 }
-
-
-
 function sameStylePreset(a, b) {
     if (!a || !b) return false;
     if (JSON.stringify(a.levels) !== JSON.stringify(b.levels)) return false;
     if (a.missingLevelMode && b.missingLevelMode && a.missingLevelMode !== b.missingLevelMode) return false;
     return true;
 }
-
-
-
-
 function snapshotStylePreset(settings) {
     const levels = {};
     for (let level = 1; level <= 6; level++) {
@@ -506,14 +382,9 @@ function snapshotStylePreset(settings) {
     }
     return {
         levels: levels,
-        
         missingLevelMode: settings.missingLevelMode === 'inherit' ? 'inherit' : 'strict',
     };
 }
-
-
-
-
 function applyStylePresetToSettings(settings, preset) {
     for (let level = 1; level <= 6; level++) {
         const clean = sanitizeLevel(level, (preset.levels && preset.levels[level]) || {});
@@ -526,15 +397,10 @@ function applyStylePresetToSettings(settings, preset) {
         own.suffix.char = clean.suffix.char;
         own.suffix.space = clean.suffix.space;
     }
-    
-    
-    
     if (preset.missingLevelMode === 'inherit' || preset.missingLevelMode === 'strict') {
         settings.missingLevelMode = preset.missingLevelMode;
     }
 }
-
-
 function sanitizeStylePresets(raw) {
     if (!Array.isArray(raw)) return [];
     const out = [];
@@ -543,16 +409,12 @@ function sanitizeStylePresets(raw) {
         if (!item || typeof item !== 'object') continue;
         let name = typeof item.name === 'string' ? item.name.trim() : '';
         if (name === '') continue;
-        
-        
-        
         if (item.id === 'default') name = DEFAULT_PRESET_NAME;
         const levels = {};
         for (let level = 1; level <= 6; level++) {
             levels[level] = sanitizeLevel(level, (item.levels && item.levels[level]) || {});
         }
         const preset = { name: name, levels: levels };
-        
         if (item.missingLevelMode === 'inherit' || item.missingLevelMode === 'strict') {
             preset.missingLevelMode = item.missingLevelMode;
         }
@@ -561,14 +423,8 @@ function sanitizeStylePresets(raw) {
     }
     return out;
 }
-
-
-
-
 const SEQUENCES = [
     { id: 'arabic', alphabet: '0-9' },
-    
-    
     { id: 'romanLower', alphabet: 'ivxlcdm' },
     { id: 'roman', alphabet: 'IVXLCDM' },
     { id: 'han', alphabet: '一二三四五六七八九十百千万亿零' },
@@ -577,7 +433,6 @@ const SEQUENCES = [
     { id: 'upper', alphabet: 'A-Z' },
 ];
 const SEQUENCE_IDS = SEQUENCES.map((item) => item.id);
-
 const SEQUENCE_SAMPLES = {
     arabic: '1, 2, 3, 4…',
     romanLower: 'i, ii, iii, iv…',
@@ -587,12 +442,10 @@ const SEQUENCE_SAMPLES = {
     lower: 'a, b, c, d…',
     upper: 'A, B, C, D…',
 };
-
 const ROMAN_TABLE = [
     [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'],
     [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
 ];
-
 function toRoman(n) {
     let out = '';
     let rest = n;
@@ -604,21 +457,17 @@ function toRoman(n) {
     }
     return out;
 }
-
 const HAN_SETS = {
     han: { digits: '零一二三四五六七八九', units: ['', '十', '百', '千'], big: ['', '万', '亿'] },
     hanUpper: { digits: '零壹贰叁肆伍陆柒捌玖', units: ['', '拾', '佰', '仟'], big: ['', '万', '亿'] },
 };
 const HAN_POWERS = [1000, 100, 10, 1];
-
-
 function toHanSection(n, set) {
     let out = '';
     for (let i = 0; i < 4; i++) {
         const power = HAN_POWERS[i];
         const digit = Math.floor(n / power) % 10;
         if (digit === 0) {
-            
             if (out !== '' && n % power !== 0 && !out.endsWith(set.digits.charAt(0))) out += set.digits.charAt(0);
         } else {
             out += set.digits.charAt(digit) + set.units[3 - i];
@@ -626,7 +475,6 @@ function toHanSection(n, set) {
     }
     return out;
 }
-
 function toHan(n, set) {
     if (n <= 0 || n > 99999999) return String(n);
     const groups = [];
@@ -647,12 +495,9 @@ function toHan(n, set) {
         needZero = false;
         out += toHanSection(group, set) + set.big[i];
     }
-    
     return out.startsWith(set.digits.charAt(1) + set.units[1]) ? out.slice(1) : out;
 }
-
 function renderIndex(sequence, n) {
-    
     if (sequence === 'romanLower') return toRoman(n).toLowerCase();
     if (sequence === 'roman') return toRoman(n);
     if (sequence === 'han') return toHan(n, HAN_SETS.han);
@@ -661,42 +506,7 @@ function renderIndex(sequence, n) {
     if (sequence === 'upper') return String.fromCharCode(65 + ((n - 1) % 26));
     return String(n);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const MAX_SEQ = 99;                 
-
-
 const NUMBER_SEGMENTS = new Set();
 let MAX_SEG_LEN = 0;
 for (const id of SEQUENCE_IDS) {
@@ -707,42 +517,17 @@ for (const id of SEQUENCE_IDS) {
         if (seg.length > MAX_SEG_LEN) MAX_SEG_LEN = seg.length;
     }
 }
-
 const NUMBER_SEPS = ['.', '-', '_', ':', '~'];
 const NUMBER_BRACKETS = [['(', ')'], ['（', '）'], ['<', '>'], ['「', '」'], ['【', '】']];
-
-
 const NUMBER_TAILS = ['、', '.', '-', '_', ')', '>', '」', '）', '】', '』'];
-
-
 const NUMBER_OPEN_CLOSE = [['', '']].concat(NUMBER_BRACKETS);
 const RE_WS_HEAD = /^[\s\u00A0\u3000]+/;   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function decideNumber(text) {
     if (!text) return null;
     const s = text.replace(RE_WS_HEAD, '');
-
     for (const pair of NUMBER_OPEN_CLOSE) {
         const fo = pair[0], fc = pair[1];
         if (fo && s[0] !== fo) continue;
-
-        
         let pos = fo ? 1 : 0;
         const first = eatSegment(s, pos);
         if (!first) continue;
@@ -753,10 +538,7 @@ function decideNumber(text) {
             if (!len) break;
             pos += 1 + len;
         }
-
-        
         if (fc && s[pos] === fc) {
-            
             let end = pos + 1;
             if (NUMBER_TAILS.includes(s[end])) end++;
             const afterBracket = s.slice(end).replace(RE_WS_HEAD, '');
@@ -772,42 +554,19 @@ function decideNumber(text) {
     }
     return null;
 }
-
-
-
 function eatSegment(s, pos) {
     for (let len = Math.min(MAX_SEG_LEN, s.length - pos); len >= 1; len--) {
         if (NUMBER_SEGMENTS.has(s.slice(pos, pos + len))) return len;
     }
     return 0;
 }
-
-
-
 function stripOldNumber(text) {
     const hit = decideNumber(text);
     return hit === null ? null : hit.content;
 }
-
-
-
 function normHeading(text) {
     return text == null ? '' : String(text).trim().normalize('NFC');
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function normForGate(text) {
     return String(text == null ? '' : text)
         .replace(/`+|\*\*|__|~~|==|<[^>]*>|\[\[|\]\]|\*|_/g, ' ')
@@ -815,49 +574,21 @@ function normForGate(text) {
         .trim()
         .normalize('NFC');
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const LINK_NORM_AT = /[!"#$%&()*+,.:;<=>?@^`{|}~/[\]\\\r\n]/g;
 const LINK_NORM_PT = /([:#|^\\\r\n]|%%|\[\[|]])/g;
-
 function linkNormAt(text) {
     return String(text == null ? '' : text).replace(LINK_NORM_AT, ' ').replace(/\s+/g, ' ').trim();
 }
-
 function linkNormPt(text) {
     return String(text == null ? '' : text).replace(LINK_NORM_PT, ' ').replace(/\s+/g, ' ').trim();
 }
-
-
 function linkKeyOld(text) {
     return linkNormAt(text).toLowerCase();
 }
-
-
-
 function normalizeFolder(text) {
     const clean = normalizePath(String(text == null ? '' : text).trim());
     return clean === '' ? '' : clean + '/';
 }
-
-
-
 function templateFolderPreset(app) {
     try {
         const internal = app && app.internalPlugins;
@@ -870,9 +601,6 @@ function templateFolderPreset(app) {
         return '';
     }
 }
-
-
-
 function parseRule(settings, level) {
     const own = settings.levels[level];
     const char = own.suffix.char !== 'none' ? own.suffix.char : '';
@@ -885,37 +613,20 @@ function parseRule(settings, level) {
         separator: level === 1 || own.separator === 'none' ? '' : own.separator,
     };
 }
-
-
-
-
-
-
-
 function buildNumberChain(settings, counters) {
     const numbers = ['', '', '', '', '', '', ''];
     for (let k = 1; k <= 6; k++) {
         const rule = parseRule(settings, k);
-        
         const restart = settings.levels[k].numbering === 'restart';
         numbers[k] = joinNumber(numbers[k - 1], restart, rule.separator)
             + renderIndex(settings.levels[k].sequence, counters[k]);
     }
     return numbers;
 }
-
-
-
-
-
 function previewLines(settings, sampleTitles) {
     const titles = sampleTitles && sampleTitles.length ? sampleTitles : SAMPLE_TITLES;
     const numbers = buildNumberChain(settings, [0, 1, 1, 1, 1, 1, 1]);   
     const lines = [];
-    
-    
-    
-    
     if (settings.missingLevelMode === 'inherit') {
         for (let level = 2; level <= 6; level++) {
             const style = level - 1;
@@ -938,21 +649,6 @@ function previewLines(settings, sampleTitles) {
     }
     return lines;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function diffSegments(oldText, newText) {
     const a = String(oldText == null ? '' : oldText);
     const b = String(newText == null ? '' : newText);
@@ -972,26 +668,17 @@ function diffSegments(oldText, newText) {
     };
     return { left: side(a), right: side(b), changed: a !== b };
 }
-
-
-
-
-
-
-
-
-function prefixSegments(prefix, body) {
+function prefixSegments(row, side) {
+    const mine = side === 'old' ? row.oldPrefix : row.newPrefix;
+    const other = side === 'old' ? row.newPrefix : row.oldPrefix;
     const out = [];
-    if (prefix) out.push({ text: prefix, changed: true });
-    if (body) out.push({ text: body, changed: false });
+    if (mine) out.push({ text: mine, changed: mine !== other });
+    if (row.body) out.push({ text: row.body, changed: false });
     return out;
 }
-
 function previewRows(headings, getLine, plan) {
     const itemByLine = new Map();
     for (const item of plan || []) itemByLine.set(item.line, item);
-    
-    
     const skipped = markSkippedHeadings(headings, getLine);
     if (skipped === null) return null;
     const rows = [];
@@ -1006,7 +693,6 @@ function previewRows(headings, getLine, plan) {
             skipped: skipped[i],
             old: fresh.text,
             next: item ? item.next : fresh.text,
-            
             oldPrefix: item ? item.oldPrefix : '',
             newPrefix: item ? item.newPrefix : '',
             body: item ? item.body : fresh.text,
@@ -1014,30 +700,17 @@ function previewRows(headings, getLine, plan) {
     }
     return rows;
 }
-
-
-
-
-
-
-
 function joinNumber(parent, restart, separator) {
     return parent && !restart ? parent + separator : '';
 }
-
 function assembleTitle(rule, number, title) {
     return rule.front + number + rule.back + rule.tail + title;
 }
-
 const HEADING_LINE_RE = /^(#{1,6}) (.*)$/;
-
 function readHeadingLine(line) {
     const match = HEADING_LINE_RE.exec(line);
     return match ? { level: match[1].length, text: match[2] } : null;
 }
-
-
-
 function readFreshHeading(heading, getLine) {
     const line = heading.position.start.line;
     const text = getLine(line);
@@ -1047,13 +720,7 @@ function readFreshHeading(heading, getLine) {
     }
     return { line, text: read.text };
 }
-
-
-
-
 function headingSignature(headings, getLine, frontValue) {
-    
-    
     let out = (frontValue === undefined || frontValue === null || frontValue === '')
         ? '' : '\u0004' + String(frontValue);
     for (const heading of headings) {
@@ -1065,16 +732,6 @@ function headingSignature(headings, getLine, frontValue) {
     }
     return out;
 }
-
-
-
-
-
-
-
-
-
-
 function markSkippedHeadings(headings, getLine) {
     const skipped = [];
     let skipFrom = 0;
@@ -1091,10 +748,6 @@ function markSkippedHeadings(headings, getLine) {
     }
     return skipped;
 }
-
-
-
-
 function effectiveLevels(headings, settings, getLine) {
     const skipped = markSkippedHeadings(headings, getLine);
     if (skipped === null) return null;
@@ -1102,53 +755,32 @@ function effectiveLevels(headings, settings, getLine) {
     headings.forEach((heading, i) => { if (!skipped[i]) set.add(heading.level); });
     return [...set].sort((a, b) => a - b);
 }
-
-
-
 function styleIndexOf(settings, effective, level) {
     if (settings.missingLevelMode !== 'inherit') return level;
     const i = effective.indexOf(level);
     return i < 0 ? level : i + 1;   
 }
-
-
 function levelOfStyle(settings, effective, k) {
     return settings.missingLevelMode !== 'inherit' ? k : effective[k - 1];
 }
-
 function planNumbering(headings, settings, getLine) {
     const rules = [null];
     for (let level = 1; level <= 6; level++) rules[level] = parseRule(settings, level);
-
-    
-    
     const effective = effectiveLevels(headings, settings, getLine);
     if (effective === null) return null;
-
     const counters = [0, 0, 0, 0, 0, 0, 0];
     const plan = [];
-
-    
     let skipFrom = 0;   
-
     for (const heading of headings) {
         const level = heading.level;
         const fresh = readFreshHeading(heading, getLine);
         if (!fresh) return null;
-
         const following = getLine(fresh.line + 1);
         const marked = following !== null && following.includes(SKIP_MARKER);
         const tree = following !== null && following.includes(SKIP_TREE_MARKER);
-
-        
         if (skipFrom && level <= skipFrom) skipFrom = 0;
-        
         if (tree && !skipFrom) skipFrom = level;
-
         if (marked || tree || skipFrom) {
-            
-            
-            
             if (settings.stripOldNumbers) {
                 const cleaned = stripOldNumber(fresh.text);
                 const next = cleaned === null ? fresh.text : cleaned;
@@ -1163,30 +795,17 @@ function planNumbering(headings, settings, getLine) {
             }
             continue; 
         }
-
         counters[level]++;
         for (let k = level + 1; k <= 6; k++) counters[k] = 0;
-
-        
         const style = styleIndexOf(settings, effective, level);
         const rule = rules[style];
-        
-        
-        
         const byStyle = [0, 0, 0, 0, 0, 0, 0];
         for (let k = 1; k <= 6; k++) {
             const lv = levelOfStyle(settings, effective, k);
             byStyle[k] = lv && counters[lv] > 0 ? counters[lv] : 1;
         }
         const number = buildNumberChain(settings, byStyle)[style] || '';
-
-        
-        
-        
         if (settings.levels[style].skip) {
-            
-            
-            
             if (settings.stripOldNumbers) {
                 const cleaned = stripOldNumber(fresh.text);
                 const next = cleaned === null ? fresh.text : cleaned;
@@ -1201,26 +820,9 @@ function planNumbering(headings, settings, getLine) {
             }
             continue; 
         }
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         const cleaned = stripOldNumber(fresh.text);
         const title = cleaned === null ? fresh.text : cleaned;
         const next = assembleTitle(rule, number, title);
-        
-        
         plan.push({
             level, line: fresh.line, old: fresh.text, next, changed: next !== fresh.text,
             oldPrefix: fresh.text.slice(0, fresh.text.length - title.length),
@@ -1230,24 +832,15 @@ function planNumbering(headings, settings, getLine) {
     }
     return plan;
 }
-
-
 function planReset(headings, settings, getLine) {
     const plan = [];
-    
-    
-    
-    
-    
     const skipped = markSkippedHeadings(headings, getLine);
     if (skipped === null) return null;
     for (let i = 0; i < headings.length; i++) {
         const heading = headings[i];
         const fresh = readFreshHeading(heading, getLine);
         if (!fresh) return null;
-        
         if (skipped[i] && !settings.stripOldNumbers) continue;
-
         const next = stripOldNumber(fresh.text);
         if (next === null || next === fresh.text) continue;
         plan.push({
@@ -1259,31 +852,20 @@ function planReset(headings, settings, getLine) {
     }
     return plan;
 }
-
-
-
-
 function escapeUrl(text) {
-    
     return text.replace(/[\\\x00\x08\x0B\x0C\x0E-\x1F ]/g, (c) => encodeURIComponent(c));
 }
-
 const WIKI_LINK_RE = /^(!?\[\[)([\s\S]*?)(\|([\s\S]*))?(\]\])$/;
 const MD_LINK_RE = /^(!?\[)([^\]]*)(\]\()([^)]*)(\))$/;
-
-
 function buildChange(original, target, newSubpath) {
     const bar = target.indexOf('#');
     const newTarget = bar < 0 ? target : target.slice(0, bar + 1) + newSubpath;
-
     const wiki = WIKI_LINK_RE.exec(original);
     if (wiki) {
         const display = wiki[4];
         if (display === undefined) return wiki[1] + newTarget + wiki[5];
-        
         return wiki[1] + newTarget + (original.includes('\\|') ? '\\|' : '|') + display + wiki[5];
     }
-
     const md = MD_LINK_RE.exec(original);
     if (md) {
         const url = md[4];
@@ -1295,28 +877,17 @@ function buildChange(original, target, newSubpath) {
     }
     return null;
 }
-
-
-
 function keyArray(map) {
     return { keys: () => [...map.keys()], get: (path) => map.get(path) };
 }
-
-
-
 class HeadingGuard extends ObsidianPlugin {
     constructor(app, manifest) {
         super(app, manifest);
-        
-        
         this.language = detectObsidianLanguage() || DEFAULT_LANGUAGE;
     }
-
     async onload() {
         await this.loadSettings();
         this.addSettingTab(new HeadingGuardSettingTab(this.app, this));
-
-        
         const onEditableMarkdown = (run) => (checking, editor, ctx) => {
             if (!ctx.file || ctx.file.extension !== 'md') return false;
             if (!checking) run(ctx.file, editor);
@@ -1332,24 +903,13 @@ class HeadingGuard extends ObsidianPlugin {
             name: this.t('cmdReset'),
             editorCheckCallback: onEditableMarkdown((file, editor) => this.runReset(file, editor, true)),
         });
-
-        
         this.syncBlockedNotified = false;
-
-        
-        
-        
-        
         this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
             this._markVisit(null);
             this.scheduleNoteEnter();
         }));
-        
-        
-        
         this.registerEvent(this.app.workspace.on('editor-change', () => this.scheduleEdit()));
         this.registerEvent(this.app.metadataCache.on('changed', (file) => this.scheduleEdit(file)));
-        
         this.register(() => {
             if (this.timerId) window.clearInterval(this.timerId);
             if (this.enterTimer) window.clearTimeout(this.enterTimer);
@@ -1357,32 +917,19 @@ class HeadingGuard extends ObsidianPlugin {
         });
         this.startTimer();
     }
-
     t(key, arg) {
         return lookup(this.language, key, arg);
     }
-
     async loadSettings() {
         const raw = (await this.loadData()) || {};
-        
-        
         this.excludePrefillPending = !Array.isArray(raw.excludeFolders);
-        
         const levels = {};
         for (let level = 1; level <= 6; level++) {
             levels[level] = sanitizeLevel(level, (raw.levels && raw.levels[level]) || {});
         }
-        
-        
         this.language = detectObsidianLanguage() || DEFAULT_LANGUAGE;
-        
-        
-        
         const savedPresets = sanitizeStylePresets(raw.stylePresets);
         const presetsWithDefault = withBuiltinDefaultPreset(savedPresets);
-        
-        
-        
         const rawPresets = Array.isArray(raw.stylePresets) ? raw.stylePresets : [];
         const needsPresetWrite = presetsWithDefault.length !== rawPresets.length
             || rawPresets.some((item) => item && item.id !== undefined);
@@ -1390,14 +937,10 @@ class HeadingGuard extends ObsidianPlugin {
             autoNumber: !!raw.autoNumber,
             scanInterval: Math.min(MAX_SCAN_INTERVAL, Math.max(MIN_SCAN_INTERVAL,
                 Number.isFinite(raw.scanInterval) ? Math.round(raw.scanInterval) : DEFAULT_SCAN_INTERVAL)),
-            
-            
             stripOldNumbers: typeof raw.stripOldNumbers === 'boolean'
                 ? raw.stripOldNumbers : DEFAULT_SETTINGS.stripOldNumbers,
-            
             missingLevelMode: pick(MISSING_LEVEL_CHOICES, raw.missingLevelMode, 'strict'),
             scope: pick(SCOPE_CHOICES, raw.scope, 'all'),
-            
             excludeFolders: Array.isArray(raw.excludeFolders)
                 ? raw.excludeFolders
                     .filter((item) => typeof item === 'string')
@@ -1409,27 +952,13 @@ class HeadingGuard extends ObsidianPlugin {
         };
         if (needsPresetWrite) await this.saveSettings();
     }
-
     async saveSettings() {
         await this.saveData(this.settings);
     }
-
-    
-    
-    
-    
-    
-    
-    
     isAutoNumberEnabled(file) {
         if (!file) return false;
         const parts = this._frontParts(file);
-        
         if (parts.incomplete) return false;
-        
-        
-        
-        
         if (parts.flag === 'on') return true;
         const path = file.path.replace(/\\/g, '/');
         for (const folder of this.settings.excludeFolders) {
@@ -1437,12 +966,6 @@ class HeadingGuard extends ObsidianPlugin {
         }
         return this.settings.scope === 'all';
     }
-
-    
-    
-    
-    
-    
     _frontmatterValue(file) {
         const cache = this.app.metadataCache.getFileCache(file);
         const raw = cache && cache.frontmatter ? cache.frontmatter[SCOPE_KEY] : undefined;
@@ -1451,14 +974,6 @@ class HeadingGuard extends ObsidianPlugin {
         if (text === '') return undefined;
         return text.toLowerCase() === 'on' ? 'on' : text;
     }
-
-    
-    
-    
-    
-    
-    
-    
     _frontParts(file) {
         const raw = this._frontmatterValue(file);
         if (typeof raw !== 'string' || raw === '') return { flag: '', name: '', incomplete: false };
@@ -1474,19 +989,10 @@ class HeadingGuard extends ObsidianPlugin {
         }
         return { flag: '', name: raw, incomplete: false };
     }
-
-    
-    
-    
     _markVisit(file) {
         const path = file && file.path ? file.path : '';
         if (this._visitPath !== path) { this._visitPath = path; this._warnedName = ''; }
     }
-
-    
-    
-    
-    
     _noteSettings(file) {
         const parts = this._frontParts(file);
         if (parts.incomplete) return { settings: this.settings, missing: '', incomplete: true };
@@ -1495,10 +1001,6 @@ class HeadingGuard extends ObsidianPlugin {
         if (!preset) return { settings: this.settings, missing: parts.name, incomplete: false };
         return { settings: this._settingsWithPreset(preset), missing: '', incomplete: false };
     }
-
-    
-    
-    
     _settingsWithPreset(preset) {
         const levels = {};
         for (let lv = 1; lv <= 6; lv++) {
@@ -1511,34 +1013,27 @@ class HeadingGuard extends ObsidianPlugin {
         applyStylePresetToSettings(copy, preset);
         return copy;
     }
-
     _headingsOf(file) {
         const cache = this.app.metadataCache.getFileCache(file);
         return cache && cache.headings ? cache.headings : [];
     }
-
     _lineReader(editor) {
         return (n) => (n >= 0 && n < editor.lineCount() ? editor.getLine(n) : null);
     }
-
     _activeMarkdown() {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         return view && view.file ? view : null;
     }
-
     startTimer() {
         this.stopTimer();
         this.timerId = window.setInterval(() => this.checkActiveNote(false), this.settings.scanInterval * 1000);
     }
-
     stopTimer() {
         if (this.timerId) {
             window.clearInterval(this.timerId);
             this.timerId = null;
         }
     }
-
-    
     scheduleNoteEnter() {
         if (!this.settings.autoNumber) return;
         if (this.enterTimer) window.clearTimeout(this.enterTimer);
@@ -1547,8 +1042,6 @@ class HeadingGuard extends ObsidianPlugin {
             this.checkActiveNote(true); 
         }, NOTE_ENTER_DELAY_MS);
     }
-
-    
     scheduleEdit(file) {
         if (!this.settings.autoNumber) return;
         const view = this._activeMarkdown();
@@ -1559,9 +1052,6 @@ class HeadingGuard extends ObsidianPlugin {
             this.checkActiveNote(false);
         }, EDIT_DEBOUNCE_MS);
     }
-
-    
-    
     _cursorOnHeading(editor, file) {
         if (!editor) return false;
         const cursor = editor.getCursor();
@@ -1570,41 +1060,21 @@ class HeadingGuard extends ObsidianPlugin {
         if (line === null || !readHeadingLine(line)) return false;
         return this._headingsOf(file).some((h) => h.position.start.line === cursor.line);
     }
-
-    
-    
     checkActiveNote(force) {
         if (!this.settings.autoNumber) return;
-        
         if (this.pendingConfirm) return;
         const view = this._activeMarkdown();
         if (!view) return;
-        
-        
         if (!this.isAutoNumberEnabled(view.file)) return;
-        
-        
-        
-        
         if (!force && this._cursorOnHeading(view.editor, view.file)) return;
         const signature = view.file.path + '\u0000'
             + headingSignature(this._headingsOf(view.file), this._lineReader(view.editor),
                 this._frontmatterValue(view.file));
-        
         if (!force && signature === this.lastSignature && !this.retryPending) return;
         this.retryPending = false;
         this.lastSignature = signature;
         this.runOnce(view.file, view.editor, false);
     }
-
-    
-    
-    
-    
-    
-    
-    
-    
     _write(editor, items, extra) {
         const changes = items.map((item) => ({
             from: { line: item.line, ch: item.level + 1 },
@@ -1622,13 +1092,6 @@ class HeadingGuard extends ObsidianPlugin {
         }
         editor.transaction({ changes });
     }
-
-    
-    
-    
-    
-    
-    
     collectSelfLinkEdits(file, renames, sourcePath) {
         const edits = [];
         const byOld = new Map();
@@ -1657,23 +1120,14 @@ class HeadingGuard extends ObsidianPlugin {
         });
         return edits;
     }
-
-    
     async runOnce(file, editor, manual) {
         try {
             this._markVisit(file);   
             const getLine = this._lineReader(editor);
             const headings = this._headingsOf(file);
-            
             const note = this._noteSettings(file);
-            
-            
             if (note.incomplete) return;
             if (note.missing) {
-                
-                
-                
-                
                 if (manual) { new Notice(this.t('noticeUnknownPreset', note.missing)); return; }
                 if (this._warnedName !== note.missing) {
                     this._warnedName = note.missing;
@@ -1683,8 +1137,6 @@ class HeadingGuard extends ObsidianPlugin {
             }
             const plan = planNumbering(headings, note.settings, getLine);
             if (plan === null) {
-                
-                
                 this.retryPending = true;
                 if (manual) new Notice(this.t('stale'));
                 return;
@@ -1695,16 +1147,12 @@ class HeadingGuard extends ObsidianPlugin {
                 if (manual) new Notice(this.t('upToDate'));
                 return;
             }
-            
             if (!this.readyToRename(manual)) return;
             await this._confirmOrApply({ file, editor, manual, mode: 'number', items: todo, headings, getLine, plan });
         } catch (err) {
-            
-            
             console.error('[heading-guard] 编号失败：', err);
         }
     }
-
     async runReset(file, editor, manual) {
         try {
             const getLine = this._lineReader(editor);
@@ -1718,18 +1166,12 @@ class HeadingGuard extends ObsidianPlugin {
                 if (manual) new Notice(this.t('noNumber'));
                 return;
             }
-            
             if (!this.readyToRename(manual)) return;
             await this._confirmOrApply({ file, editor, manual, mode: 'reset', items: plan, headings, getLine, plan });
         } catch (err) {
             console.error('[heading-guard] 重置编号失败：', err);
         }
     }
-
-    
-
-    
-    
     async _confirmOrApply(ctx) {
         const { file, editor, manual, mode, items, headings, getLine, plan } = ctx;
         if (!manual) {
@@ -1752,9 +1194,6 @@ class HeadingGuard extends ObsidianPlugin {
         });
         modal.open();
     }
-
-    
-    
     async _applyEdited(file, editor, rows, mode) {
         try {
             const items = rows
@@ -1764,8 +1203,6 @@ class HeadingGuard extends ObsidianPlugin {
                 new Notice(this.t(mode === 'number' ? 'upToDate' : 'noNumber'));
                 return;
             }
-            
-            
             const getLine = this._lineReader(editor);
             for (const item of items) {
                 const now = readHeadingLine(getLine(item.line) || '');
@@ -1779,55 +1216,26 @@ class HeadingGuard extends ObsidianPlugin {
             console.error('[heading-guard] 确认后写入失败：', err);
         }
     }
-
-    
     async _applyItems(file, editor, items, manual, mode) {
         const renames = items.map((item) => ({ from: item.old, to: item.next }));
-        
         const selfEdits = this.collectSelfLinkEdits(file, renames, file.path);
         this._write(editor, items, selfEdits);
         const synced = await this.syncHeadingLinks(file, renames, file.path);
         synced.links += selfEdits.length;
-        
-        
         if (selfEdits.length > 0 && !synced.countedSelf) synced.files += 1;
         if (manual) {
             new Notice(this.t(mode === 'number' ? 'done' : 'resetDone', items.length));
             if (synced.links > 0) new Notice(this.t('linksUpdated', synced));
         }
     }
-
-    
-
-    
-    
-    
-    
-    
-    
-    
     isDefaultStylePreset(preset) {
         return !!preset && preset.name === DEFAULT_PRESET_NAME;
     }
-
-    
     findStylePreset(name) {
         const key = String(name == null ? '' : name).trim();
         if (key === '') return null;
         return this.settings.stylePresets.find((item) => item.name === key) || null;
     }
-
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     saveStylePreset(name, force) {
         const key = String(name == null ? '' : name).trim();
         if (key === '') return 'nameTaken';
@@ -1835,8 +1243,6 @@ class HeadingGuard extends ObsidianPlugin {
         preset.name = key;
         const existing = this.findStylePreset(key);
         if (existing) {
-            
-            
             if (this.isDefaultStylePreset(existing)) return 'nameTaken';
             if (sameStylePreset(existing, preset)) return 'unchanged';
             if (!force) return 'confirm:' + key;
@@ -1845,33 +1251,22 @@ class HeadingGuard extends ObsidianPlugin {
             this.saveSettings();
             return 'saved';
         }
-        
         const twin = this.settings.stylePresets.find((item) => sameStylePreset(item, preset));
         if (twin) return 'duplicate:' + twin.name;
-        
         this.settings.stylePresets.push(preset);
         this.saveSettings();
         return 'saved';
     }
-
-    
     applyStylePreset(name) {
         const key = String(name == null ? '' : name).trim();
-        
-        
         const preset = this.findStylePreset(key);
         if (!preset) return false;
         applyStylePresetToSettings(this.settings, preset);
         this.presetLocked = true;   
         this.saveSettings();
-        
         this.checkActiveNote(true);
         return true;
     }
-
-    
-    
-    
     startNewStyle() {
         applyStylePresetToSettings(this.settings, defaultStylePreset());
         this.presetLocked = false;
@@ -1879,64 +1274,36 @@ class HeadingGuard extends ObsidianPlugin {
         this.saveSettings();
         this.checkActiveNote(true);
     }
-
     deleteStylePreset(name) {
         const key = String(name == null ? '' : name).trim();
         const preset = this.findStylePreset(key);
         if (!preset) return false;
-        
-        
         if (this.isDefaultStylePreset(preset)) return false;
         this.settings.stylePresets.splice(this.settings.stylePresets.indexOf(preset), 1);
         this.saveSettings();
         return true;
     }
-
-    
     canSyncLinks() {
         const mc = this.app.metadataCache;
         return typeof mc.iterateAllRefs === 'function' && typeof mc.updateInternalLinks === 'function';
     }
-
-    
-    
-    
-    
     readyToRename(manual) {
         if (this.canSyncLinks()) {
             this.syncBlockedNotified = false; 
             return true;
         }
-        
         if (manual || !this.syncBlockedNotified) {
             this.syncBlockedNotified = true;
             new Notice(this.t('syncBlocked'));
         }
         return false;
     }
-
-    
-    
-    
-    
-    
-    
-    
     async syncHeadingLinks(file, renames, skipPath) {
         const mc = this.app.metadataCache;
-        
-        
         const synced = { links: 0, files: 0 };
         if (!this.canSyncLinks()) return synced;
-
-        
-        
-        
-        
-        
         const byOld = new Map();
         for (const rename of renames) byOld.set(linkKeyOld(rename.from), rename.to);
-
         const byPath = new Map();
         mc.iterateAllRefs((sourcePath, ref) => {
             if (skipPath && sourcePath === skipPath) return; 
@@ -1946,7 +1313,6 @@ class HeadingGuard extends ObsidianPlugin {
             if (!sub || sub.charAt(0) === '^') return; 
             const next = byOld.get(linkKeyOld(sub));
             if (!next) return;
-            
             if (mc.getFirstLinkpathDest(ref.link.slice(0, bar), sourcePath) !== file) return;
             const change = buildChange(ref.original, ref.link, next);
             if (change === null) return;
@@ -1960,8 +1326,6 @@ class HeadingGuard extends ObsidianPlugin {
             for (const list of byPath.values()) synced.links += list.length;
             await mc.updateInternalLinks(keyArray(byPath));
         }
-
-        
         const canvas = mc.linkUpdaters && mc.linkUpdaters.canvas;
         if (canvas && typeof canvas.renameSubpath === 'function') {
             for (const rename of renames) {
@@ -1971,11 +1335,7 @@ class HeadingGuard extends ObsidianPlugin {
         return synced;
     }
 }
-
-
-
 const CAN_SET_HEADING = typeof Setting.prototype.setHeading === 'function';
-
 function settingHeading(containerEl, text, level) {
     if (CAN_SET_HEADING) {
         new Setting(containerEl).setName(text).setHeading();
@@ -1983,39 +1343,23 @@ function settingHeading(containerEl, text, level) {
     }
     containerEl.createEl(level === 2 ? 'h4' : 'h3', { text });
 }
-
 const BRACKET_LABELS = { '()': 'bracketAscii', '（）': 'bracketCjk' };
-
-
 function pickDropdown(dd, choices, labelFor, current, onChange) {
     for (const value of choices) dd.addOption(value, labelFor(value));
     dd.setValue(current).onChange(onChange);
 }
-
-
-
 const RESET_ICON = 'rotate-ccw';
-
 const HELP_ICON = 'help-circle';
 const REPO_URL = 'https://github.com/nnq7/obsidian-heading-guard';
-
-
 function openExternal(url) {
     try {
         if (typeof window !== 'undefined' && typeof window.open === 'function') window.open(url, '_blank', 'noopener');
     } catch {
-        
     }
 }
-
-
 const PRESET_SAVE_ICON = 'save';
-
 const PRESET_NEW_ICON = 'plus';
 const PRESET_DELETE_ICON = 'trash-2';
-
-
-
 class ConfirmResetModal extends Modal {
     constructor(app, text, labels, opts) {
         super(app);
@@ -2023,14 +1367,10 @@ class ConfirmResetModal extends Modal {
         this.labels = labels;
         this.answer = null;      
         this.onChoose = null;
-        
         this.reverse = !!(opts && opts.reverse);
     }
-
     onOpen() {
         this.contentEl.createEl('p', { text: this.text, cls: 'heading-guard-confirm-text' });
-        
-        
         const row = this.contentEl.createEl('div', { cls: 'heading-guard-confirm-buttons' });
         const okBtn = { text: this.labels.ok, cls: 'mod-cta', answer: 'ok' };
         const cancelBtn = { text: this.labels.cancel, cls: '', answer: 'cancel' };
@@ -2039,24 +1379,15 @@ class ConfirmResetModal extends Modal {
                 .addEventListener('click', () => this.choose(item.answer));
         }
     }
-
     choose(answer) {
         this.answer = answer;
         this.close();
         if (this.onChoose) this.onChoose(answer);
     }
-
     onClose() {
         this.contentEl.empty();
     }
 }
-
-
-
-
-
-
-
 function paintDiffSegments(el, segments, changedCls, label) {
     el.empty();
     if (label) el.createEl('span', { cls: label.cls, text: label.text });
@@ -2066,26 +1397,19 @@ function paintDiffSegments(el, segments, changedCls, label) {
         else el.createEl('span', { text: seg.text });
     }
 }
-
-
 function flattenCellText(raw) {
     return String(raw == null ? '' : raw).replace(/[\r\n\t]+/g, ' ');
 }
-
 class DiffConfirmModal extends Modal {
     constructor(app, opts) {
         super(app);
         this.opts = opts;
         this.answer = null;      
     }
-
     onOpen() {
         const { title, rows, labels } = this.opts;
         this.modalEl.addClass('heading-guard-diff-modal');
         this.titleEl.setText(title);
-
-        
-        
         const counts = [0, 0, 0, 0, 0, 0, 0];
         for (const r of rows) { if (!r.skipped) counts[r.level]++; }
         const parts = [];
@@ -2094,36 +1418,25 @@ class DiffConfirmModal extends Modal {
             cls: 'heading-guard-diff-summary',
             text: labels.summary + (parts.length ? parts.join(', ') : labels.summaryNone),
         });
-
         const head = this.contentEl.createEl('div', { cls: 'heading-guard-diff-head' });
         head.createEl('div', { cls: 'heading-guard-diff-col', text: labels.old });
         head.createEl('div', { cls: 'heading-guard-diff-col', text: labels.next });
-
-        
-        
         const scroller = this.contentEl.createEl('div', { cls: 'heading-guard-diff-scroll' });
         for (const row of rows) {
             row.text = row.next;
             const line = scroller.createEl('div', { cls: 'heading-guard-diff-row' });
-            
             const levelLabel = {
                 text: row.skipped ? labels.skip : 'H' + row.level,
                 cls: 'heading-guard-diff-level' + (row.skipped ? ' is-skip' : ''),
             };
-
-            
             const left = line.createEl('div', { cls: 'heading-guard-diff-cell heading-guard-diff-old' });
-            paintDiffSegments(left, prefixSegments(row.oldPrefix, row.body), 'heading-guard-diff-del', levelLabel);
-
-            
+            paintDiffSegments(left, prefixSegments(row, 'old'), 'heading-guard-diff-del', levelLabel);
             const right = line.createEl('div', {
                 cls: 'heading-guard-diff-cell heading-guard-diff-new',
                 attr: { contenteditable: 'true', spellcheck: 'false' },
             });
-            paintDiffSegments(right, prefixSegments(row.newPrefix, row.body), 'heading-guard-diff-ins');
+            paintDiffSegments(right, prefixSegments(row, 'new'), 'heading-guard-diff-ins');
             row.el = right;
-
-            
             right.addEventListener('paste', (ev) => {
                 ev.preventDefault();
                 const cb = ev.clipboardData;
@@ -2135,10 +1448,6 @@ class DiffConfirmModal extends Modal {
             right.addEventListener('keydown', (ev) => {
                 if (ev.key === 'Enter') ev.preventDefault();
             });
-            
-            
-            
-            
             right.addEventListener('blur', () => {
                 const text = flattenCellText(right.textContent);
                 row.text = text;
@@ -2147,163 +1456,109 @@ class DiffConfirmModal extends Modal {
                 paintDiffSegments(right, diff.right, 'heading-guard-diff-ins');
             });
         }
-
-        
-        
         const bar = this.contentEl.createEl('div', { cls: 'heading-guard-diff-buttons' });
         bar.createEl('button', { text: labels.cancel })
             .addEventListener('click', () => this.finish(false));
         bar.createEl('button', { text: labels.confirm, cls: 'mod-cta' })
             .addEventListener('click', () => this.finish(true));
     }
-
     finish(confirm) {
         this.answer = confirm ? 'confirm' : 'cancel';
         const rows = this.opts.rows || [];
-        
         for (const row of rows) if (row.el) row.text = flattenCellText(row.el.textContent);
         this.close();
-        
         if (confirm && this.opts.onConfirm) this.opts.onConfirm(rows);
     }
-
     onClose() {
         this.contentEl.empty();
         if (this.opts.onClose) this.opts.onClose();
     }
 }
-
-
-
-
-
 const HAS_INPUT_SUGGEST = typeof AbstractInputSuggest === 'function';
-
 const SUGGEST_LIMIT = 50;
 const SUGGEST_BASE = HAS_INPUT_SUGGEST ? AbstractInputSuggest : function () {};
-
-
-
 class InputListSuggest extends SUGGEST_BASE {
     constructor(app, inputEl, getItems, onPick) {
         super(app, inputEl);
         this.getItems = getItems;
         this.onPick = onPick;
     }
-
     getSuggestions(query) {
         const needle = String(query == null ? '' : query).trim().toLowerCase();
         const items = this.getItems() || [];
         const hit = needle === '' ? items.slice()
             : items.filter((name) => name.toLowerCase().indexOf(needle) >= 0);
-        
-        
-        
-        
         return hit.slice(0, SUGGEST_LIMIT);
     }
-
     renderSuggestion(name, el) {
         el.setText(name);
     }
-
-    
     selectSuggestion(name) {
         this.setValue(name);
         this.close();
         if (this.onPick) this.onPick(name);
     }
 }
-
-
-
-
-
 function vaultFolderPaths(app) {
     return app.vault.getAllLoadedFiles()
         .filter((f) => f instanceof TFolder && f.path !== '/')
         .map((f) => f.path)
         .sort();
 }
-
-
-
 class FolderPickerModal extends Modal {
     constructor(app, opts) {
         super(app);
         this.opts = opts;      
         this.answer = null;    
     }
-
     onOpen() {
         const { title, label, placeholder, labels } = this.opts;
         this.modalEl.addClass('heading-guard-folder-modal');
         this.titleEl.setText(title);
-
         new Setting(this.contentEl)
             .setName(label)
             .addText((tc) => {
                 this.input = tc;
                 tc.setPlaceholder(placeholder);
-                
                 if (HAS_INPUT_SUGGEST) {
                     this.suggest = new InputListSuggest(this.app, tc.inputEl,
                         () => vaultFolderPaths(this.app), (path) => tc.setValue(path));
                 }
             });
-
-        
         const bar = this.contentEl.createEl('div', { cls: 'modal-button-container' });
         bar.createEl('button', { text: labels.cancel })
             .addEventListener('click', () => this.finish(false));
         bar.createEl('button', { text: labels.ok, cls: 'mod-cta' })
             .addEventListener('click', () => this.finish(true));
     }
-
     finish(confirm) {
         this.answer = confirm ? 'confirm' : 'cancel';
         const value = this.input ? String(this.input.getValue() || '') : '';
         this.close();
         if (confirm && this.opts.onConfirm) this.opts.onConfirm(value);
     }
-
     onClose() {
         this.contentEl.empty();
         if (this.opts.onClose) this.opts.onClose();
     }
 }
-
 class HeadingGuardSettingTab extends PluginSettingTab {
     constructor(app, plugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
-
     display() {
         const plugin = this.plugin;
         const t = (key, arg) => plugin.t(key, arg);
         const settings = plugin.settings;
         const { containerEl } = this;
-        
-        
-        
         const scrollHost = scrollHostOf(containerEl);
         const scrollTop = scrollHost ? scrollHost.scrollTop : 0;
-
-        
-        
-
         containerEl.empty();
         containerEl.addClass('heading-guard-settings');
-
-        
         let previewEl = null;
         const renderPreview = () => {
             if (!previewEl) return;
-            
-            
-            
-            
             const sampleTitles = t('level').slice(1);
             const inherit = settings.missingLevelMode === 'inherit';
             previewEl.empty();
@@ -2314,10 +1569,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
             }
             previewEl.addClass('heading-guard-preview-split');
             const withMode = (mode) => Object.assign({}, settings, { missingLevelMode: mode });
-            
-            
-            
-            
             const cols = [
                 [t('missingLevelStrict'), previewLines(withMode('strict'), sampleTitles), false],
                 [t('missingLevelInherit'), previewLines(settings, sampleTitles), true],
@@ -2332,7 +1583,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         const save = async () => {
             await plugin.saveSettings();
             renderPreview();
-            
             plugin.checkActiveNote(true);
         };
         const noneLabel = t('none');
@@ -2340,19 +1590,12 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         const bracketLabel = (value) => (value === 'none'
             ? noneLabel
             : (BRACKET_LABELS[value] ? t(BRACKET_LABELS[value]) : value));
-
-        
-        
         let autoToggle = null;
         let intervalSlider = null;
-
         let intervalLabel = null;
         const setIntervalLabel = (seconds) => {
             if (intervalLabel) intervalLabel.setText(String(seconds) + ' ' + t('seconds'));
         };
-        
-        
-        
         const saveInterval = debounce(async () => {
             await plugin.saveSettings();
             if (settings.autoNumber) plugin.startTimer();   
@@ -2402,7 +1645,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 if (intervalSlider) intervalSlider.setValue(DEFAULT_SCAN_INTERVAL).setDisabled(true);
                 setIntervalLabel(DEFAULT_SCAN_INTERVAL);
             }));
-
         new Setting(containerEl)
             .setName(t('stripOld'))
             .setDesc(t('stripOldDesc'))
@@ -2410,7 +1652,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 settings.stripOldNumbers = value;
                 await save();
             }));
-
         new Setting(containerEl)
             .setName(t('scope'))
             .setDesc(t('scopeDesc'))
@@ -2422,10 +1663,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                         await save();
                     });
             });
-
-        
-        
-        
         if (plugin.excludePrefillPending) {
             plugin.excludePrefillPending = false;
             const preset = templateFolderPreset(plugin.app);
@@ -2441,7 +1678,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
             .addTextArea((ta) => {
                 ta.setValue(settings.excludeFolders.map((f) => f.replace(/\/$/, '')).join('\n'));
                 ta.inputEl.rows = 4;
-                
                 const saveExclude = debounce(async () => {
                     settings.excludeFolders = ta.getValue()
                         .split('\n')
@@ -2451,32 +1687,15 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 }, 500);
                 ta.onChange(() => saveExclude());
             })
-            
             .addExtraButton((b) => b
                 .setIcon('plus')
                 .setTooltip(t('excludeAdd'))
                 .onClick(() => this.pickFolderToExclude()));
-        
-        
         excludeRow.settingEl.addClass('heading-guard-inline-row');
-
         settingHeading(containerEl, t('preview'), 2);
-        
-        
         previewEl = containerEl.createEl('div', { cls: 'heading-guard-preview' });
-
-        
         const presetInput = this.renderPresetRow(containerEl);   
-
-        
-        
-        
         const renderGlobalAndMissing = () => {
-
-        
-        
-        
-        
         new Setting(containerEl)
             .setName(t('missingLevel'))
             .setDesc(t('missingLevelDesc'))
@@ -2488,18 +1707,13 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                     settings.missingLevelMode = value;
                     await save();
                 }));
-
         };
-
-        
         let suffixDirty = false;   
         const renderLevelGroups = () => {
         for (let level = 1; level <= 6; level++) {
             const own = settings.levels[level];
-            
             const group = containerEl.createEl('details', { cls: 'heading-guard-level' });
             group.createEl('summary', { text: t('level')[level] });
-
             const skipRow = new Setting(group)
                 .setName(t('skip'))
                 .setDesc(t('skipDesc'))
@@ -2507,14 +1721,7 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                     own.skip = value;
                     await save();
                 }));
-            
-            
-            
-            
             skipRow.settingEl.addClass('heading-guard-inline-row');
-
-            
-            
             const seqRow = new Setting(group)
                 .setName(t('seqBrackets'))
                 .setDesc(t('seqBracketsDesc'))
@@ -2531,12 +1738,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                     refreshSuffix();   
                 }));
             seqRow.settingEl.addClass('heading-guard-inline-row');   
-            
-            
-            
-            
-            
-            
             if (level > 1) {
                 seqRow.addDropdown((dd) => {
                     dd.addOption('inherit', t('numberInherit')).addOption('restart', t('numberRestart'))
@@ -2547,8 +1748,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                         });
                 });
             }
-
-            
             if (level > 1) {
                 new Setting(group)
                     .setName(t('sep'))
@@ -2558,18 +1757,10 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                         await save();
                     }));
             }
-
-            
-            
-            
-            
             if (suffixChoicesFor(level, own).indexOf(own.suffix.char) < 0) {
                 own.suffix.char = '.';
                 suffixDirty = true;
             }
-
-            
-            
             const suffixRow = new Setting(group)
                 .setName(t('lvSuffix'))
                 .setDesc(t('lvSuffixDesc'))
@@ -2587,21 +1778,12 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                             await save();
                         });
                 });
-            
             suffixRow.settingEl.addClass('heading-guard-inline-row');
-
-            
-            
-            
-            
             function refreshSuffix() {
-                
                 if (suffixChoicesFor(level, own).indexOf(own.suffix.char) < 0) {
                     own.suffix.char = '.';
                     void save();
                 }
-                
-                
                 const host = suffixRow.controlEl;
                 const sel = host && typeof host.querySelector === 'function' ? host.querySelector('select') : null;
                 if (!sel) return;
@@ -2613,25 +1795,15 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 sel.value = keep;
             }
         }
-
         };
-
-        
         renderGlobalAndMissing();
         renderLevelGroups();
         if (suffixDirty) void plugin.saveSettings();   
-
-        
-        
         if (presetInput) presetInput.setDisabled(!!plugin.presetLocked);
         renderPreview();
         this.renderRestoreRow(containerEl); 
-        
         if (scrollHost) scrollHost.scrollTop = scrollTop;
     }
-
-    
-    
     pickFolderToExclude() {
         const plugin = this.plugin;
         const t = (key, arg) => plugin.t(key, arg);
@@ -2656,32 +1828,24 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         });
         modal.open();
     }
-
-    
-    
     renderPresetRow(containerEl) {
         const plugin = this.plugin;
         const t = (key, arg) => plugin.t(key, arg);
         let nameInput = null;
-
         const readName = () => (nameInput ? String(nameInput.getValue() || '').trim() : '');
         const applyName = (name) => {
             const value = String(name == null ? '' : name).trim();
             if (value === '') { new Notice(t('presetNeedName')); return; }
-            
             if (!plugin.applyStylePreset(value)) { new Notice(t('presetMissing', value)); return; }
-            
             plugin.presetNameDraft = value;
             this.display();     
             new Notice(t('presetApplied', value));
         };
-        
         const deleteName = () => {
             const value = readName();
             if (value === '') { new Notice(t('presetNeedName')); return; }
             const target = plugin.findStylePreset(value);
             if (!target) { new Notice(t('presetMissing', value)); return; }
-            
             if (plugin.isDefaultStylePreset(target)) return;
             const modal = new ConfirmResetModal(this.app, t('presetDeleteConfirm', value),
                 { ok: t('ok'), cancel: t('cancel') });
@@ -2690,65 +1854,46 @@ class HeadingGuardSettingTab extends PluginSettingTab {
                 plugin.deleteStylePreset(value);
                 plugin.presetNameDraft = '';
                 if (nameInput) nameInput.setValue('');
-                
-                
                 plugin.presetLocked = false;
                 this.display();   
                 new Notice(t('presetDeleted', value));
             };
             modal.open();
         };
-
         const row = new Setting(containerEl)
             .setName(t('preset'))
             .setDesc(t('presetDesc'))
             .addText((tc) => {
                 nameInput = tc;
                 tc.setPlaceholder(t('presetPlaceholder'));
-                
                 if (plugin.presetNameDraft) tc.setValue(plugin.presetNameDraft);
                 tc.onChange((v) => { plugin.presetNameDraft = v; });
             })
-            
-            
             .addExtraButton((b) => b
                 .setIcon(PRESET_SAVE_ICON)
                 .setTooltip(t('presetSaveTip'))
                 .onClick(() => this.savePresetFromRow(readName())))
-            
             .addExtraButton((b) => b
                 .setIcon(PRESET_NEW_ICON)
                 .setTooltip(t('presetNew'))
-                
             .onClick(() => { plugin.startNewStyle(); this.display(); }))
             .addExtraButton((b) => b
                 .setIcon(PRESET_DELETE_ICON)
                 .setTooltip(t('presetDeleteTip'))
                 .onClick(() => deleteName()));
-        
         row.settingEl.addClass('heading-guard-inline-row');
         row.settingEl.addClass('heading-guard-preset-row');
-        
-        
         this.renderPresetChips(row.settingEl, applyName);
         return nameInput;   
     }
-
-    
-    
-    
-    
-    
     renderPresetChips(hostEl, applyName) {
         const plugin = this.plugin;
-        
         const box = hostEl.createEl('div', { cls: 'heading-guard-preset-chips' });
         for (const preset of plugin.settings.stylePresets) {
             box.createEl('button', { text: preset.name, cls: 'heading-guard-preset-chip' })
                 .addEventListener('click', () => applyName(preset.name));
         }
     }
-
     savePresetFromRow(name) {
         const plugin = this.plugin;
         const t = (key, arg) => plugin.t(key, arg);
@@ -2763,7 +1908,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         }
         if (result.indexOf('confirm:') === 0) {
             const target = result.slice('confirm:'.length);
-            
             const modal = new ConfirmResetModal(this.app, t('presetOverwriteConfirm', target),
                 { ok: t('ok'), cancel: t('cancel') }, { reverse: true });
             modal.onChoose = (answer) => {
@@ -2775,18 +1919,13 @@ class HeadingGuardSettingTab extends PluginSettingTab {
             modal.open();
             return;
         }
-        
-        
         this.display();
         new Notice(t('presetSaved', value));
     }
-
-    
     renderRestoreRow(containerEl) {
         const t = (key) => this.plugin.t(key);
         const row = new Setting(containerEl);
         row.settingEl.addClass('heading-guard-restore-row');
-        
         row.addButton((b) => {
             b.onClick(() => openExternal(REPO_URL));
             b.buttonEl.empty();
@@ -2795,16 +1934,11 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         });
         row.addButton((b) => {
             b.onClick(() => this.confirmRestoreDefaults());
-            
-            
-            
             b.buttonEl.empty();
             setIcon(b.buttonEl, RESET_ICON);
             b.buttonEl.createEl('span', { text: t('restoreDefaults') });
         });
     }
-
-    
     confirmRestoreDefaults() {
         const t = (key) => this.plugin.t(key);
         const modal = new ConfirmResetModal(this.app, t('restoreConfirm'),
@@ -2814,11 +1948,8 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         };
         modal.open();
     }
-
     async restoreDefaults() {
         const plugin = this.plugin;
-        
-        
         const keepPresets = plugin.settings.stylePresets;
         plugin.settings = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
         plugin.settings.stylePresets = keepPresets;
@@ -2830,7 +1961,6 @@ class HeadingGuardSettingTab extends PluginSettingTab {
         this.display();                
     }
 }
-
 module.exports = HeadingGuard;
 module.exports.__internals = {
     DEFAULT_SETTINGS,
