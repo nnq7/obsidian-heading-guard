@@ -569,6 +569,7 @@ function normHeading(text) {
 }
 function normForGate(text) {
     return String(text == null ? '' : text)
+        .replace(/\p{Cf}/gu, '')
         .replace(/`+|\*\*|__|~~|==|<[^>]*>|\[\[|\]\]|\*|_/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
